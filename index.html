@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>通用知识库</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230f766e'/%3E%3Cpath d='M18 14h23a7 7 0 0 1 7 7v29H27a9 9 0 0 0-9 9V14Z' fill='none' stroke='white' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ink: '#0b0d10',
+            panel: '#111419',
+            raised: '#181c22',
+            line: '#292f38',
+            accent: '#2dd4bf'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <style>
+    * { letter-spacing: 0; }
+    html, body { height: 100%; }
+    body { font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif; }
+    button, input, select, textarea { font: inherit; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #343b46; border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    .icon { width: 16px; height: 16px; stroke-width: 1.8; }
+    .icon-sm { width: 14px; height: 14px; stroke-width: 1.8; }
+    .sidebar-shell { width: 280px; min-width: 280px; }
+    .drawer-shell { width: min(400px, 100vw); }
+    .markdown { color: #d6dae1; line-height: 1.72; overflow-wrap: anywhere; }
+    .markdown p { margin: 0 0 0.65rem; }
+    .markdown p:last-child { margin-bottom: 0; }
+    .markdown h1, .markdown h2, .markdown h3 { color: #f4f6f8; font-weight: 650; margin: 1rem 0 0.45rem; }
+    .markdown h1 { font-size: 1.15rem; }
+    .markdown h2 { font-size: 1.05rem; }
+    .markdown h3 { font-size: 0.95rem; }
+    .markdown ul, .markdown ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    .markdown ul { list-style: disc; }
+    .markdown ol { list-style: decimal; }
+    .markdown blockquote { border-left: 2px solid #2dd4bf; color: #9da5b2; padding-left: 0.8rem; margin: 0.7rem 0; }
+    .markdown pre { background: #090b0e; border: 1px solid #292f38; border-radius: 6px; padding: 0.85rem; overflow-x: auto; margin: 0.75rem 0; }
+    .markdown code { background: #20252d; border-radius: 4px; padding: 0.1rem 0.3rem; font-family: "Cascadia Code", Consolas, monospace; font-size: 0.86em; }
+    .markdown pre code { background: transparent; padding: 0; }
+    .markdown table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.86rem; }
+    .markdown th, .markdown td { border: 1px solid #343b46; padding: 0.45rem 0.55rem; text-align: left; }
+    .markdown th { background: #181c22; color: #f4f6f8; }
+    .markdown a { color: #5eead4; text-decoration: underline; }
+    .citation-ref { color: #5eead4; cursor: help; font-weight: 650; margin: 0 1px; font-size: 0.72em; vertical-align: super; }
+    .citation-ref:focus-visible { outline: 1px solid #5eead4; outline-offset: 2px; border-radius: 2px; }
+    .range-input { accent-color: #2dd4bf; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+    .spin { animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 767px) {
+      .sidebar-shell { position: fixed; inset: 0 auto 0 0; z-index: 50; transform: translateX(-100%); transition: transform 180ms ease; }
+      .sidebar-shell.open { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body class="h-[100dvh] overflow-hidden bg-ink text-slate-200">
+  <div id="mobileOverlay" class="fixed inset-0 z-40 hidden bg-black/60 md:hidden" aria-hidden="true"></div>
+
+  <div class="flex h-full min-h-0">
+    <aside id="sidebar" class="sidebar-shell flex h-full flex-col border-r border-line bg-panel">
+      <header class="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4">
+        <div class="flex h-8 w-8 items-center justify-center rounded-md border border-teal-400/30 bg-teal-400/10 text-accent">
+          <i data-lucide="database" class="icon"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="truncate text-sm font-semibold text-slate-100">通用知识库</div>
+          <div class="flex items-center gap-1.5 text-[11px] text-slate-500">
+            <span id="healthDot" class="status-dot bg-slate-600"></span>
+            <span id="healthText">正在连接</span>
+          </div>
+        </div>
+        <button id="closeSidebarButton" class="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-raised hover:text-slate-100 md:hidden" type="button" title="关闭导航" aria-label="关闭导航">
+          <i data-lucide="x" class="icon"></i>
+        </button>
+      </header>
+
+      <div class="shrink-0 px-3 pb-2 pt-3">
+        <div class="flex items-center gap-2">
+          <button id="newKbButton" class="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-teal-400/30 bg-teal-400/10 px-3 text-xs font-medium text-teal-300 hover:bg-teal-400/15" type="button">
+            <i data-lucide="plus" class="icon-sm"></i>
+            新建知识库
+          </button>
+          <button id="refreshButton" class="flex h-9 w-9 items-center justify-center rounded-md border border-line text-slate-400 hover:bg-raised hover:text-slate-100" type="button" title="刷新知识库" aria-label="刷新知识库">
+            <i data-lucide="refresh-cw" class="icon-sm"></i>
+          </button>
+        </div>
+        <div class="relative mt-2">
+          <i data-lucide="search" class="icon-sm pointer-events-none absolute left-2.5 top-2.5 text-slate-600"></i>
+          <input id="kbFilter" class="h-9 w-full rounded-md border border-line bg-ink pl-8 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-teal-500/70" type="search" placeholder="筛选知识库">
+        </div>
+      </div>
+
+      <nav id="sidebarKbList" class="min-h-0 flex-1 overflow-y-auto px-2 pb-3" aria-label="知识库列表"></nav>
+
+      <section class="max-h-56 shrink-0 border-t border-line bg-ink/40" aria-labelledby="documentPanelTitle">
+        <div class="flex h-10 items-center gap-2 px-3">
+          <i data-lucide="files" class="icon-sm text-slate-500"></i>
+          <h2 id="documentPanelTitle" class="min-w-0 flex-1 truncate text-xs font-medium text-slate-300">当前文档</h2>
+          <span id="documentCount" class="text-[11px] tabular-nums text-slate-600">0</span>
+        </div>
+        <div id="documentList" class="max-h-44 overflow-y-auto px-2 pb-2"></div>
+      </section>
+    </aside>
+
+    <main class="flex min-w-0 flex-1 flex-col bg-ink">
+      <header class="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-panel px-3 md:px-4">
+        <button id="openSidebarButton" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line text-slate-400 hover:bg-raised hover:text-slate-100 md:hidden" type="button" title="打开导航" aria-label="打开导航">
+          <i data-lucide="panel-left" class="icon"></i>
+        </button>
+
+        <div class="relative min-w-0 flex-1 md:max-w-sm">
+          <i data-lucide="library" class="icon-sm pointer-events-none absolute left-3 top-2.5 text-slate-500"></i>
+          <select id="activeKbSelect" class="h-9 w-full appearance-none truncate rounded-md border border-line bg-raised pl-9 pr-8 text-xs font-medium text-slate-200 outline-none focus:border-teal-500/70" aria-label="当前知识库">
+            <option value="">选择知识库</option>
+          </select>
+          <i data-lucide="chevron-down" class="icon-sm pointer-events-none absolute right-2.5 top-2.5 text-slate-500"></i>
+        </div>
+
+        <button id="importButton" class="flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line px-2.5 text-xs font-medium text-slate-300 hover:border-teal-500/50 hover:bg-raised hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-40 md:px-3" type="button" title="导入文档" aria-label="导入文档" disabled>
+          <i data-lucide="file-up" class="icon-sm"></i>
+          <span class="hidden sm:inline">导入文档</span>
+        </button>
+        <button id="settingsButton" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line text-slate-400 hover:bg-raised hover:text-slate-100" type="button" title="检索设置" aria-label="检索设置">
+          <i data-lucide="sliders-horizontal" class="icon"></i>
+        </button>
+      </header>
+
+      <div class="flex h-9 shrink-0 items-center gap-3 border-b border-line bg-panel/60 px-4 text-[11px] text-slate-500">
+        <span class="flex min-w-0 items-center gap-1.5">
+          <i data-lucide="layers-3" class="icon-sm"></i>
+          <span id="scopeSummary" class="truncate">未选择检索知识库</span>
+        </span>
+        <span class="ml-auto hidden items-center gap-1.5 tabular-nums sm:flex">
+          Alpha <strong id="alphaSummary" class="font-medium text-teal-300">0.60</strong>
+        </span>
+      </div>
+
+      <section id="chatScroll" class="min-h-0 flex-1 overflow-y-auto" aria-live="polite">
+        <div id="chatMessages" class="mx-auto flex w-full max-w-4xl flex-col gap-4 px-3 py-5 md:px-6 md:py-7">
+          <div id="welcome" class="py-10 text-center md:py-16">
+            <div class="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-teal-400/25 bg-teal-400/10 text-accent">
+              <i data-lucide="messages-square" class="h-5 w-5"></i>
+            </div>
+            <h1 class="text-base font-semibold text-slate-100">通用知识库</h1>
+            <p id="welcomeScope" class="mt-1 text-xs text-slate-500">尚未选择检索范围</p>
+            <div class="mt-5 flex flex-wrap justify-center gap-2">
+              <button class="quick-question rounded-md border border-line bg-panel px-3 py-2 text-xs text-slate-400 hover:border-teal-500/40 hover:text-teal-300" data-question="总结当前知识库的核心内容" type="button">总结核心内容</button>
+              <button class="quick-question rounded-md border border-line bg-panel px-3 py-2 text-xs text-slate-400 hover:border-teal-500/40 hover:text-teal-300" data-question="列出最重要的事实和结论" type="button">提取关键结论</button>
+              <button class="quick-question rounded-md border border-line bg-panel px-3 py-2 text-xs text-slate-400 hover:border-teal-500/40 hover:text-teal-300" data-question="这些资料中有哪些风险或待确认事项" type="button">识别风险事项</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="shrink-0 border-t border-line bg-panel px-3 pb-3 pt-3 md:px-5 md:pb-4">
+        <div class="mx-auto max-w-4xl">
+          <div class="flex min-h-12 items-end gap-2 rounded-md border border-line bg-ink p-2 focus-within:border-teal-500/60">
+            <textarea id="chatInput" class="max-h-36 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-sm leading-5 text-slate-100 outline-none placeholder:text-slate-600" rows="1" placeholder="向已选知识库提问"></textarea>
+            <button id="sendButton" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-500 text-slate-950 hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500" type="button" title="发送" aria-label="发送" disabled>
+              <i data-lucide="arrow-up" class="icon"></i>
+            </button>
+          </div>
+          <div id="composerStatus" class="mt-1.5 h-4 text-center text-[10px] text-slate-600">选择知识库后可开始对话</div>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <div id="drawerOverlay" class="fixed inset-0 z-50 hidden bg-black/60" aria-hidden="true"></div>
+  <aside id="settingsDrawer" class="drawer-shell fixed inset-y-0 right-0 z-[60] flex translate-x-full flex-col border-l border-line bg-panel shadow-2xl transition-transform duration-200" aria-label="检索设置">
+    <header class="flex h-14 shrink-0 items-center border-b border-line px-4">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-100">检索设置</h2>
+        <p class="text-[11px] text-slate-500">当前对话配置</p>
+      </div>
+      <button id="closeDrawerButton" class="ml-auto flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-raised hover:text-slate-100" type="button" title="关闭设置" aria-label="关闭设置">
+        <i data-lucide="x" class="icon"></i>
+      </button>
+    </header>
+
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <section class="border-b border-line px-4 py-4" aria-labelledby="scopeTitle">
+        <div class="mb-3 flex items-center gap-2">
+          <i data-lucide="library" class="icon-sm text-teal-300"></i>
+          <h3 id="scopeTitle" class="text-xs font-semibold text-slate-200">检索知识库</h3>
+          <span id="drawerScopeCount" class="ml-auto text-[11px] text-slate-500">0 个</span>
+        </div>
+        <div id="drawerKbList" class="max-h-52 space-y-1 overflow-y-auto pr-1"></div>
+      </section>
+
+      <section class="border-b border-line px-4 py-4" aria-labelledby="hybridTitle">
+        <div class="mb-4 flex items-center gap-2">
+          <i data-lucide="git-merge" class="icon-sm text-amber-300"></i>
+          <h3 id="hybridTitle" class="text-xs font-semibold text-slate-200">混合检索</h3>
+        </div>
+        <label class="block">
+          <span class="flex items-center text-xs text-slate-400">
+            Alpha 权重
+            <output id="alphaValue" class="ml-auto font-mono text-xs text-teal-300">0.60</output>
+          </span>
+          <input id="alphaInput" class="range-input mt-3 w-full" type="range" min="0" max="1" step="0.05" value="0.60">
+          <span class="mt-1 flex justify-between text-[10px] text-slate-600"><span>BM25</span><span>向量</span></span>
+        </label>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <label class="text-xs text-slate-400">
+            相似度阈值
+            <input id="thresholdInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="0" max="1" step="0.05">
+          </label>
+          <label class="text-xs text-slate-400">
+            返回片段数
+            <input id="topKInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="1" max="20" step="1">
+          </label>
+        </div>
+        <label class="mt-4 flex cursor-pointer items-center gap-3 text-xs text-slate-400">
+          <input id="rerankerInput" class="h-4 w-4 rounded border-line bg-ink accent-teal-400" type="checkbox">
+          启用本地重排模型
+        </label>
+      </section>
+
+      <section class="border-b border-line px-4 py-4" aria-labelledby="llmTitle">
+        <div class="mb-3 flex items-center gap-2">
+          <i data-lucide="bot" class="icon-sm text-sky-300"></i>
+          <h3 id="llmTitle" class="text-xs font-semibold text-slate-200">模型服务</h3>
+        </div>
+        <label class="block text-xs text-slate-400">API 地址
+          <input id="llmApiUrlInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="url">
+        </label>
+        <label class="mt-3 block text-xs text-slate-400">API Key
+          <input id="llmApiKeyInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="password" autocomplete="off">
+        </label>
+        <label class="mt-3 block text-xs text-slate-400">模型名称
+          <input id="llmModelInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+      </section>
+
+      <section class="border-b border-line px-4 py-4" aria-labelledby="processingTitle">
+        <div class="mb-3 flex items-center gap-2">
+          <i data-lucide="cpu" class="icon-sm text-violet-300"></i>
+          <h3 id="processingTitle" class="text-xs font-semibold text-slate-200">处理与模型</h3>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="text-xs text-slate-400">默认分块
+            <input id="chunkSizeInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="200" max="4000" step="50">
+          </label>
+          <label class="text-xs text-slate-400">分块重叠
+            <input id="chunkOverlapInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="0" max="500" step="10">
+          </label>
+          <label class="text-xs text-slate-400">单文件上限 MB
+            <input id="maxUploadSizeInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="1" max="2048" step="1">
+          </label>
+          <label class="text-xs text-slate-400">批量文件数
+            <input id="maxFilesInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="1" max="200" step="1">
+          </label>
+        </div>
+        <label class="mt-3 block text-xs text-slate-400">Embedding 模型
+          <input id="embeddingModelInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+        <div class="mt-3 grid grid-cols-2 gap-3">
+          <label class="text-xs text-slate-400">设备
+            <select id="embeddingDeviceInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60">
+              <option value="cpu">CPU</option><option value="cuda">CUDA</option><option value="mps">MPS</option>
+            </select>
+          </label>
+          <label class="text-xs text-slate-400">批大小
+            <input id="embeddingBatchInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="1" max="512" step="1">
+          </label>
+        </div>
+        <label class="mt-3 block text-xs text-slate-400">Reranker 模型
+          <input id="rerankerModelInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+        <label class="mt-3 flex cursor-pointer items-center gap-3 text-xs text-slate-400">
+          <input id="useRerankerConfigInput" class="h-4 w-4 rounded border-line bg-ink accent-teal-400" type="checkbox">
+          服务端默认启用 Reranker
+        </label>
+      </section>
+
+      <section class="border-b border-line px-4 py-4" aria-labelledby="bm25Title">
+        <div class="mb-3 flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="icon-sm text-amber-300"></i>
+          <h3 id="bm25Title" class="text-xs font-semibold text-slate-200">检索参数</h3>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="text-xs text-slate-400">BM25 K1
+            <input id="bm25K1Input" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="0" max="10" step="0.05">
+          </label>
+          <label class="text-xs text-slate-400">BM25 B
+            <input id="bm25BInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="number" min="0" max="1" step="0.05">
+          </label>
+        </div>
+      </section>
+
+      <section class="border-b border-line px-4 py-4" aria-labelledby="appTitle">
+        <div class="mb-3 flex items-center gap-2">
+          <i data-lucide="settings-2" class="icon-sm text-slate-300"></i>
+          <h3 id="appTitle" class="text-xs font-semibold text-slate-200">系统</h3>
+        </div>
+        <label class="block text-xs text-slate-400">应用名称
+          <input id="appNameInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+        <label class="mt-3 block text-xs text-slate-400">应用版本
+          <input id="appVersionInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+        <label class="mt-3 flex cursor-pointer items-center gap-3 text-xs text-slate-400">
+          <input id="debugInput" class="h-4 w-4 rounded border-line bg-ink accent-teal-400" type="checkbox">
+          开启调试日志
+        </label>
+        <label class="mt-3 flex cursor-pointer items-center gap-3 text-xs text-slate-400">
+          <input id="unstructuredInput" class="h-4 w-4 rounded border-line bg-ink accent-teal-400" type="checkbox">
+          优先使用高精度文档解析
+        </label>
+      </section>
+
+      <section class="border-b border-line px-4 py-4" aria-labelledby="storageTitle">
+        <div class="mb-3 flex items-center gap-2">
+          <i data-lucide="hard-drive" class="icon-sm text-rose-300"></i>
+          <h3 id="storageTitle" class="text-xs font-semibold text-slate-200">存储路径</h3>
+        </div>
+        <p class="mb-3 text-[10px] text-slate-600">路径修改会在下次启动时生效</p>
+        <label class="block text-xs text-slate-400">数据库 URL
+          <input id="databaseUrlInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+        <label class="mt-3 block text-xs text-slate-400">向量库目录
+          <input id="chromaDirInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+        <label class="mt-3 block text-xs text-slate-400">向量集合名称
+          <input id="chromaCollectionInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+        <label class="mt-3 block text-xs text-slate-400">上传临时目录
+          <input id="uploadDirInput" class="mt-1.5 h-9 w-full rounded-md border border-line bg-ink px-2.5 text-xs text-slate-200 outline-none focus:border-teal-500/60" type="text">
+        </label>
+      </section>
+
+      <section class="px-4 py-4" aria-labelledby="promptTitle">
+        <div class="mb-3 flex items-center gap-2">
+          <i data-lucide="code-2" class="icon-sm text-sky-300"></i>
+          <h3 id="promptTitle" class="text-xs font-semibold text-slate-200">System Prompt</h3>
+        </div>
+        <textarea id="systemPromptInput" class="h-56 w-full resize-y rounded-md border border-line bg-ink p-3 font-mono text-xs leading-5 text-slate-300 outline-none focus:border-teal-500/60" spellcheck="false"></textarea>
+      </section>
+    </div>
+
+    <footer class="shrink-0 border-t border-line p-4">
+      <button id="saveSettingsButton" class="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-teal-500 text-xs font-semibold text-slate-950 hover:bg-teal-400" type="button">
+        <i data-lucide="save" class="icon-sm"></i>
+        保存设置
+      </button>
+    </footer>
+  </aside>
+
+  <div id="kbModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="kbModalTitle">
+    <form id="kbForm" class="w-full max-w-md rounded-md border border-line bg-panel shadow-2xl">
+      <header class="flex h-14 items-center border-b border-line px-4">
+        <h2 id="kbModalTitle" class="text-sm font-semibold text-slate-100">新建知识库</h2>
+        <button id="closeKbModalButton" class="ml-auto flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-raised hover:text-slate-100" type="button" title="关闭" aria-label="关闭">
+          <i data-lucide="x" class="icon"></i>
+        </button>
+      </header>
+      <div class="space-y-4 p-4">
+        <label class="block text-xs text-slate-400">
+          名称
+          <input id="kbNameInput" class="mt-1.5 h-10 w-full rounded-md border border-line bg-ink px-3 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-teal-500/60" type="text" maxlength="200" required placeholder="例如：产品技术手册">
+        </label>
+        <label class="block text-xs text-slate-400">
+          描述
+          <textarea id="kbDescriptionInput" class="mt-1.5 h-20 w-full resize-none rounded-md border border-line bg-ink p-3 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-teal-500/60" maxlength="1000" placeholder="知识范围和用途"></textarea>
+        </label>
+        <label class="block text-xs text-slate-400">
+          分类
+          <select id="kbTypeSelect" class="mt-1.5 h-10 w-full rounded-md border border-line bg-ink px-3 text-sm text-slate-200 outline-none focus:border-teal-500/60">
+            <option value="general">通用</option>
+            <option value="technical">技术</option>
+            <option value="product">产品</option>
+            <option value="operations">运营</option>
+            <option value="hr">人力资源</option>
+            <option value="finance">财务</option>
+            <option value="legal">法务</option>
+          </select>
+        </label>
+      </div>
+      <footer class="flex justify-end gap-2 border-t border-line px-4 py-3">
+        <button id="cancelKbButton" class="h-9 rounded-md border border-line px-4 text-xs text-slate-400 hover:bg-raised hover:text-slate-100" type="button">取消</button>
+        <button id="createKbButton" class="h-9 rounded-md bg-teal-500 px-4 text-xs font-semibold text-slate-950 hover:bg-teal-400" type="submit">创建</button>
+      </footer>
+    </form>
+  </div>
+
+  <input id="fileInput" class="hidden" type="file" accept=".txt,.md,.html,.htm,.pdf,.docx,.doc,.json,.xml,.csv,.log,.yaml,.yml" multiple>
+  <div id="toastRegion" class="pointer-events-none fixed bottom-5 left-1/2 z-[90] flex w-[min(92vw,420px)] -translate-x-1/2 flex-col gap-2" aria-live="assertive"></div>
+
+  <script>
+    const API_BASE = window.location.protocol.startsWith('http')
+      ? window.location.origin
+      : 'http://localhost:8000';
+    const SETTINGS_KEY = 'enterprise_kb_settings_v3';
+    const SCOPE_KEY = 'enterprise_kb_scope_v3';
+      const DEFAULT_SYSTEM_PROMPT = `你是一个专业的通用知识库助手。请严格基于检索到的参考资料回答问题。
+
+要求：
+1. 引用事实时在句尾标注 [1]、[2] 等来源编号。
+2. 资料不足时明确说明当前知识库中未找到相关信息，不得编造。
+3. 使用中文，结构清晰，结论优先。`;
+    const DEFAULT_SETTINGS = {
+      alpha: 0.6,
+      threshold: 0.4,
+      topK: 5,
+      reranker: false,
+      systemPrompt: DEFAULT_SYSTEM_PROMPT,
+      app_name: '通用知识库',
+      app_version: '2.1.0-embedded',
+      debug: false,
+      llm_api_url: 'https://api.deepseek.com/v1/chat/completions',
+      llm_api_key: '',
+      llm_model: 'deepseek-chat',
+      embedding_model_name: 'BAAI/bge-small-zh-v1.5',
+      embedding_device: 'cpu',
+      embedding_batch_size: 32,
+      reranker_model_name: 'BAAI/bge-reranker-v2-m3',
+      use_reranker: false,
+      bm25_k1: 1.5,
+      bm25_b: 0.75,
+      chunk_default_size: 1000,
+      chunk_default_overlap: 200,
+      max_upload_size_mb: 50,
+      max_files_per_batch: 20,
+      search_default_top_k: 5,
+      search_default_alpha: 0.5,
+      search_default_threshold: 0.4,
+      use_unstructured: true
+    };
+
+    const state = {
+      kbs: [],
+      documents: [],
+      selectedKbIds: [],
+      activeKbId: null,
+      settings: loadSettings(),
+      llmApiKey: '',
+      streaming: false,
+      abortController: null,
+      pollTimers: new Map()
+    };
+
+    const byId = (id) => document.getElementById(id);
+    const escapeHtml = (value) => {
+      const element = document.createElement('div');
+      element.textContent = value == null ? '' : String(value);
+      return element.innerHTML;
+    };
+
+    class ApiError extends Error {
+      constructor(message, status, payload) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.payload = payload;
+      }
+    }
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+        delete saved.llm_api_key;
+        return { ...DEFAULT_SETTINGS, ...saved };
+      } catch (error) {
+        return { ...DEFAULT_SETTINGS };
+      }
+    }
+
+    function saveLocalState() {
+      const safeSettings = { ...state.settings };
+      delete safeSettings.llm_api_key;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(safeSettings));
+      localStorage.setItem(SCOPE_KEY, JSON.stringify({
+        selectedKbIds: state.selectedKbIds,
+        activeKbId: state.activeKbId
+      }));
+    }
+
+    function restoreScope() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SCOPE_KEY) || '{}');
+        const validIds = new Set(state.kbs.map((kb) => kb.id));
+        state.selectedKbIds = (saved.selectedKbIds || []).filter((id) => validIds.has(id));
+        state.activeKbId = validIds.has(saved.activeKbId) ? saved.activeKbId : null;
+      } catch (error) {
+        state.selectedKbIds = [];
+        state.activeKbId = null;
+      }
+      if (!state.activeKbId && state.kbs.length) state.activeKbId = state.kbs[0].id;
+      if (!state.selectedKbIds.length && state.activeKbId) state.selectedKbIds = [state.activeKbId];
+    }
+
+    function errorMessage(payload, fallback) {
+      if (!payload) return fallback;
+      if (typeof payload.message === 'string') return payload.message;
+      if (typeof payload.detail === 'string') return payload.detail;
+      if (payload.detail && Array.isArray(payload.detail.errors)) {
+        return payload.detail.errors.map((item) => item.message).join('；');
+      }
+      return fallback;
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(`${API_BASE}${path}`, options);
+      const contentType = response.headers.get('content-type') || '';
+      let payload = null;
+      if (response.status !== 204) {
+        payload = contentType.includes('application/json')
+          ? await response.json().catch(() => null)
+          : await response.text().catch(() => null);
+      }
+      if (!response.ok) {
+        throw new ApiError(errorMessage(payload, `请求失败 (${response.status})`), response.status, payload);
+      }
+      return payload;
+    }
+
+    function jsonOptions(method, body) {
+      return {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      };
+    }
+
+    async function loadRuntimeSettings() {
+      try {
+        const payload = await api('/api/v1/settings');
+        const server = payload.settings || {};
+        state.settings = {
+          ...state.settings,
+          ...server,
+          alpha: Number(server.search_default_alpha ?? state.settings.alpha),
+          threshold: Number(server.search_default_threshold ?? state.settings.threshold),
+          topK: Number(server.search_default_top_k ?? state.settings.topK),
+          reranker: Boolean(server.use_reranker ?? state.settings.reranker),
+          systemPrompt: server.system_prompt || state.settings.systemPrompt || DEFAULT_SYSTEM_PROMPT
+        };
+        saveLocalState();
+      } catch (error) {
+        // Local settings remain usable when the backend is still booting.
+      }
+    }
+
+    function toast(message, type = 'info') {
+      const item = document.createElement('div');
+      const colors = type === 'error'
+        ? 'border-red-500/40 bg-red-950 text-red-200'
+        : type === 'success'
+          ? 'border-emerald-500/40 bg-emerald-950 text-emerald-200'
+          : 'border-line bg-raised text-slate-200';
+      item.className = `pointer-events-auto rounded-md border px-3 py-2.5 text-xs shadow-xl ${colors}`;
+      item.textContent = message;
+      byId('toastRegion').appendChild(item);
+      window.setTimeout(() => item.remove(), 3600);
+    }
+
+    function refreshIcons() {
+      if (window.lucide) window.lucide.createIcons({ attrs: { 'aria-hidden': 'true' } });
+    }
+
+    async function loadCoreData({ restore = false } = {}) {
+      const kbs = await api('/api/v1/kb?limit=200');
+      state.kbs = kbs;
+      if (restore) {
+        restoreScope();
+      } else {
+        const validIds = new Set(kbs.map((kb) => kb.id));
+        state.selectedKbIds = state.selectedKbIds.filter((id) => validIds.has(id));
+        if (!validIds.has(state.activeKbId)) state.activeKbId = kbs[0]?.id || null;
+        if (!state.selectedKbIds.length && state.activeKbId) state.selectedKbIds = [state.activeKbId];
+      }
+      await loadActiveDocuments();
+      saveLocalState();
+      renderAll();
+    }
+
+    async function loadActiveDocuments() {
+      if (!state.activeKbId) {
+        state.documents = [];
+        return;
+      }
+      state.documents = await api(`/api/v1/kb/${encodeURIComponent(state.activeKbId)}/documents?limit=200`);
+    }
+
+    function activeKb() {
+      return state.kbs.find((kb) => kb.id === state.activeKbId) || null;
+    }
+
+    function selectedKbs() {
+      const selected = new Set(state.selectedKbIds);
+      return state.kbs.filter((kb) => selected.has(kb.id));
+    }
+
+    function renderSidebar() {
+      const filter = byId('kbFilter').value.trim().toLowerCase();
+      const filtered = state.kbs.filter((kb) =>
+        !filter || kb.name.toLowerCase().includes(filter) || (kb.description || '').toLowerCase().includes(filter)
+      );
+      if (!filtered.length) {
+        byId('sidebarKbList').innerHTML = '<div class="px-3 py-8 text-center text-xs text-slate-600">暂无知识库</div>';
+        return;
+      }
+
+      byId('sidebarKbList').innerHTML = filtered.map((kb) => {
+              const active = kb.id === state.activeKbId;
+              const selected = state.selectedKbIds.includes(kb.id);
+              return `
+                <div class="group flex min-h-10 items-center rounded-md border ${active ? 'border-teal-500/35 bg-teal-400/10' : 'border-transparent hover:bg-raised'}">
+                  <button class="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left" type="button" data-activate-kb="${kb.id}" title="${escapeHtml(kb.name)}">
+                    <i data-lucide="book-open" class="icon-sm ${active ? 'text-teal-300' : 'text-slate-600'}"></i>
+                    <span class="min-w-0 flex-1 truncate text-xs ${active ? 'font-medium text-teal-200' : 'text-slate-400'}">${escapeHtml(kb.name)}</span>
+                    <span class="text-[10px] tabular-nums text-slate-600">${kb.doc_count || 0}</span>
+                  </button>
+                  <button class="mr-1 flex h-7 w-7 items-center justify-center rounded text-slate-600 hover:bg-red-950/50 hover:text-red-300" type="button" data-delete-kb="${kb.id}" title="删除知识库" aria-label="删除知识库">
+                    <i data-lucide="trash-2" class="icon-sm"></i>
+                  </button>
+                  <label class="mr-2 flex h-7 w-7 cursor-pointer items-center justify-center" title="加入检索范围">
+                    <input class="h-3.5 w-3.5 rounded border-line bg-ink accent-teal-400" type="checkbox" data-scope-kb="${kb.id}" ${selected ? 'checked' : ''}>
+                  </label>
+                </div>`;
+            }).join('');
+    }
+
+    function renderDocuments() {
+      const kb = activeKb();
+      byId('documentPanelTitle').textContent = kb ? kb.name : '当前文档';
+      byId('documentCount').textContent = String(state.documents.length);
+      if (!kb) {
+        byId('documentList').innerHTML = '<div class="px-2 pb-3 text-xs text-slate-600">未选择知识库</div>';
+        return;
+      }
+      if (!state.documents.length) {
+        byId('documentList').innerHTML = '<div class="px-2 pb-3 text-xs text-slate-600">暂无文档</div>';
+        return;
+      }
+      const statusMap = {
+        completed: ['bg-emerald-400', '已完成'],
+        failed: ['bg-red-400', '失败'],
+        uploading: ['bg-amber-300', '接收中'],
+        parsing: ['bg-amber-300', '解析中'],
+        embedding: ['bg-sky-300', '索引中']
+      };
+      byId('documentList').innerHTML = state.documents.map((doc) => {
+        const [color, label] = statusMap[doc.status] || ['bg-slate-500', doc.status];
+        return `
+          <div class="flex min-h-8 items-center gap-2 rounded-md px-2 text-[11px] hover:bg-raised" title="${escapeHtml(doc.error_msg || doc.filename)}">
+            <span class="status-dot ${color}"></span>
+            <span class="min-w-0 flex-1 truncate text-slate-400">${escapeHtml(doc.filename)}</span>
+            <span class="shrink-0 text-[10px] text-slate-600">${label}</span>
+            <button class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-600 hover:bg-red-950/50 hover:text-red-300" type="button" data-delete-document="${doc.id}" title="删除文件" aria-label="删除文件">
+              <i data-lucide="trash-2" class="icon-sm"></i>
+            </button>
+          </div>`;
+      }).join('');
+    }
+
+    function renderTopBar() {
+      const select = byId('activeKbSelect');
+      select.innerHTML = '<option value="">选择知识库</option>' + state.kbs.map((kb) =>
+        `<option value="${kb.id}" ${kb.id === state.activeKbId ? 'selected' : ''}>${escapeHtml(kb.name)}</option>`
+      ).join('');
+      byId('importButton').disabled = !state.activeKbId;
+      const selected = selectedKbs();
+      byId('scopeSummary').textContent = selected.length
+        ? `检索范围：${selected.map((kb) => kb.name).join('、')}`
+        : '未选择检索知识库';
+      byId('welcomeScope').textContent = selected.length
+        ? `${selected.length} 个知识库已加入检索范围`
+        : '尚未选择检索范围';
+      byId('alphaSummary').textContent = Number(state.settings.alpha).toFixed(2);
+    }
+
+    function renderDrawer() {
+      byId('drawerScopeCount').textContent = `${state.selectedKbIds.length} 个`;
+      byId('drawerKbList').innerHTML = state.kbs.length
+        ? state.kbs.map((kb) => `
+            <label class="flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-transparent px-2.5 hover:border-line hover:bg-raised">
+              <input class="h-3.5 w-3.5 rounded border-line bg-ink accent-teal-400" type="checkbox" data-drawer-scope-kb="${kb.id}" ${state.selectedKbIds.includes(kb.id) ? 'checked' : ''}>
+              <span class="min-w-0 flex-1 truncate text-xs text-slate-400">${escapeHtml(kb.name)}</span>
+              <span class="text-[10px] tabular-nums text-slate-600">${kb.doc_count || 0}</span>
+            </label>`).join('')
+        : '<div class="py-5 text-center text-xs text-slate-600">暂无知识库</div>';
+      byId('alphaInput').value = String(state.settings.alpha);
+      byId('alphaValue').textContent = Number(state.settings.alpha).toFixed(2);
+      byId('thresholdInput').value = String(state.settings.threshold);
+      byId('topKInput').value = String(state.settings.topK);
+      byId('rerankerInput').checked = Boolean(state.settings.reranker);
+      byId('systemPromptInput').value = state.settings.systemPrompt;
+      byId('llmApiUrlInput').value = state.settings.llm_api_url || '';
+      byId('llmApiKeyInput').value = state.llmApiKey || '';
+      byId('llmApiKeyInput').placeholder = state.settings.llm_api_key_configured
+        ? '已配置，留空保持当前 Key'
+        : '输入 API Key';
+      byId('llmModelInput').value = state.settings.llm_model || '';
+      byId('chunkSizeInput').value = state.settings.chunk_default_size ?? 1000;
+      byId('chunkOverlapInput').value = state.settings.chunk_default_overlap ?? 200;
+      byId('maxUploadSizeInput').value = state.settings.max_upload_size_mb ?? 50;
+      byId('maxFilesInput').value = state.settings.max_files_per_batch ?? 20;
+      byId('embeddingModelInput').value = state.settings.embedding_model_name || '';
+      byId('embeddingDeviceInput').value = state.settings.embedding_device || 'cpu';
+      byId('embeddingBatchInput').value = state.settings.embedding_batch_size ?? 32;
+      byId('rerankerModelInput').value = state.settings.reranker_model_name || '';
+      byId('useRerankerConfigInput').checked = Boolean(state.settings.use_reranker);
+      byId('bm25K1Input').value = state.settings.bm25_k1 ?? 1.5;
+      byId('bm25BInput').value = state.settings.bm25_b ?? 0.75;
+      byId('appNameInput').value = state.settings.app_name || '';
+      byId('appVersionInput').value = state.settings.app_version || '';
+      byId('debugInput').checked = Boolean(state.settings.debug);
+      byId('unstructuredInput').checked = Boolean(state.settings.use_unstructured);
+      byId('databaseUrlInput').value = state.settings.database_url || '';
+      byId('chromaDirInput').value = state.settings.chroma_persist_dir || '';
+      byId('chromaCollectionInput').value = state.settings.chroma_collection_name || '';
+      byId('uploadDirInput').value = state.settings.upload_temp_dir || '';
+    }
+
+    function updateComposer() {
+      const canSend = Boolean(byId('chatInput').value.trim() && state.selectedKbIds.length);
+      const button = byId('sendButton');
+      button.disabled = state.streaming ? false : !canSend;
+      button.title = state.streaming ? '停止生成' : '发送';
+      button.setAttribute('aria-label', button.title);
+      button.innerHTML = state.streaming
+        ? '<i data-lucide="square" class="icon-sm"></i>'
+        : '<i data-lucide="arrow-up" class="icon"></i>';
+      byId('composerStatus').textContent = state.streaming
+        ? '正在生成回答'
+        : state.selectedKbIds.length
+          ? `已选择 ${state.selectedKbIds.length} 个知识库`
+          : '选择知识库后可开始对话';
+    }
+
+    function renderAll() {
+      renderSidebar();
+      renderDocuments();
+      renderTopBar();
+      renderDrawer();
+      updateComposer();
+      refreshIcons();
+    }
+
+    async function activateKb(kbId) {
+      if (!state.kbs.some((kb) => kb.id === kbId)) return;
+      state.activeKbId = kbId;
+      state.selectedKbIds = [kbId];
+      saveLocalState();
+      await loadActiveDocuments();
+      renderAll();
+      closeMobileSidebar();
+    }
+
+    function toggleScope(kbId, checked) {
+      const selected = new Set(state.selectedKbIds);
+      if (checked) selected.add(kbId); else selected.delete(kbId);
+      state.selectedKbIds = Array.from(selected);
+      if (!state.activeKbId && checked) state.activeKbId = kbId;
+      saveLocalState();
+      renderAll();
+    }
+
+    function openMobileSidebar() {
+      byId('sidebar').classList.add('open');
+      byId('mobileOverlay').classList.remove('hidden');
+    }
+
+    function closeMobileSidebar() {
+      byId('sidebar').classList.remove('open');
+      byId('mobileOverlay').classList.add('hidden');
+    }
+
+    function openDrawer() {
+      renderDrawer();
+      byId('settingsDrawer').classList.remove('translate-x-full');
+      byId('drawerOverlay').classList.remove('hidden');
+      refreshIcons();
+    }
+
+    function closeDrawer() {
+      byId('settingsDrawer').classList.add('translate-x-full');
+      byId('drawerOverlay').classList.add('hidden');
+    }
+
+    function openKbModal() {
+      byId('kbNameInput').value = '';
+      byId('kbDescriptionInput').value = '';
+      byId('kbTypeSelect').value = 'general';
+      byId('kbModal').classList.remove('hidden');
+      byId('kbModal').classList.add('flex');
+      window.setTimeout(() => byId('kbNameInput').focus(), 0);
+    }
+
+    function closeKbModal() {
+      byId('kbModal').classList.add('hidden');
+      byId('kbModal').classList.remove('flex');
+    }
+
+    async function createKnowledgeBase(event) {
+      event.preventDefault();
+      const name = byId('kbNameInput').value.trim();
+      if (!name) return;
+      const button = byId('createKbButton');
+      button.disabled = true;
+      try {
+        const created = await api('/api/v1/kb', jsonOptions('POST', {
+          name,
+          description: byId('kbDescriptionInput').value.trim() || null,
+          kb_type: byId('kbTypeSelect').value,
+          category_tags: []
+        }));
+        state.activeKbId = created.id;
+        state.selectedKbIds = [created.id];
+        closeKbModal();
+        await loadCoreData();
+        toast('知识库已创建', 'success');
+      } catch (error) {
+        toast(error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function deleteKnowledgeBase(kbId) {
+      const kb = state.kbs.find((item) => item.id === kbId);
+      if (!kb || !window.confirm(`确定删除知识库“${kb.name}”及其中的全部文件吗？`)) return;
+      try {
+        await api(`/api/v1/kb/${encodeURIComponent(kbId)}?hard=true`, { method: 'DELETE' });
+        for (const [key, timer] of state.pollTimers.entries()) {
+          if (key.startsWith(`${kbId}:`)) {
+            window.clearTimeout(timer);
+            state.pollTimers.delete(key);
+          }
+        }
+        state.selectedKbIds = state.selectedKbIds.filter((id) => id !== kbId);
+        if (state.activeKbId === kbId) state.activeKbId = null;
+        await loadCoreData();
+        toast('知识库及其文件已删除', 'success');
+      } catch (error) {
+        toast(`删除知识库失败：${error.message}`, 'error');
+      }
+    }
+
+    async function deleteDocument(docId) {
+      const doc = state.documents.find((item) => item.id === docId);
+      if (!doc || !state.activeKbId || !window.confirm(`确定删除文件“${doc.filename}”吗？`)) return;
+      try {
+        await api(`/api/v1/kb/${encodeURIComponent(state.activeKbId)}/documents/${encodeURIComponent(docId)}`, { method: 'DELETE' });
+        await loadCoreData();
+        toast('文件已删除', 'success');
+      } catch (error) {
+        toast(`删除文件失败：${error.message}`, 'error');
+      }
+    }
+
+    async function importDocuments(files) {
+      const kbId = state.activeKbId;
+      if (!kbId || !files.length) return;
+      const kbName = activeKb()?.name || '当前知识库';
+      const form = new FormData();
+      for (const file of files) form.append('files', file);
+      form.append('chunk_size', String(state.settings.chunk_default_size || 1000));
+      form.append('chunk_overlap', String(state.settings.chunk_default_overlap || 200));
+      byId('importButton').disabled = true;
+      try {
+        const result = await api(`/api/v1/kb/${encodeURIComponent(kbId)}/documents`, {
+          method: 'POST',
+          body: form
+        });
+        if (result.accepted) {
+          toast(`${result.accepted} 个文档已提交至「${kbName}」`, 'success');
+          for (const documentItem of result.documents) pollDocument(kbId, documentItem.id);
+        }
+        if (result.skipped) toast(`${result.skipped} 个文件因重复、为空或格式不支持被跳过`);
+        await loadActiveDocuments();
+        renderAll();
+      } catch (error) {
+        toast(`文档导入失败：${error.message}`, 'error');
+      } finally {
+        byId('importButton').disabled = !state.activeKbId;
+      }
+    }
+
+    function pollDocument(kbId, documentId, attempt = 0) {
+      const key = `${kbId}:${documentId}`;
+      if (state.pollTimers.has(key)) window.clearTimeout(state.pollTimers.get(key));
+      const timer = window.setTimeout(async () => {
+        try {
+          const documentItem = await api(`/api/v1/kb/${encodeURIComponent(kbId)}/documents/${encodeURIComponent(documentId)}`);
+          if (kbId === state.activeKbId) {
+            await loadActiveDocuments();
+            renderAll();
+          }
+          if (documentItem.status === 'completed' || documentItem.status === 'failed') {
+            state.pollTimers.delete(key);
+            await loadCoreData();
+            toast(
+              documentItem.status === 'completed'
+                ? `${documentItem.filename} 索引完成`
+                : `${documentItem.filename} 处理失败：${documentItem.error_msg || '未知错误'}`,
+              documentItem.status === 'completed' ? 'success' : 'error'
+            );
+            return;
+          }
+          pollDocument(kbId, documentId, attempt + 1);
+        } catch (error) {
+          if (attempt < 120) pollDocument(kbId, documentId, attempt + 1);
+          else state.pollTimers.delete(key);
+        }
+      }, attempt < 10 ? 1800 : 3500);
+      state.pollTimers.set(key, timer);
+    }
+
+    function fallbackMarkdown(text) {
+      return `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
+    }
+
+    function renderMarkdown(target, text, citations = []) {
+      let html;
+      if (window.marked && window.DOMPurify) {
+        html = window.DOMPurify.sanitize(window.marked.parse(text || '', { gfm: true, breaks: true }), {
+          USE_PROFILES: { html: true }
+        });
+      } else {
+        html = fallbackMarkdown(text || '');
+      }
+      target.innerHTML = html;
+      const citationMap = new Map(citations.map((citation) => [String(citation.ref), citation]));
+      if (!citationMap.size) return;
+
+      const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          const parent = node.parentElement;
+          if (!parent || parent.closest('code, pre, a, sup')) return NodeFilter.FILTER_REJECT;
+          return /\[(\d+)\]/.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      });
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      for (const node of nodes) {
+        const fragment = document.createDocumentFragment();
+        const parts = node.nodeValue.split(/(\[\d+\])/g);
+        for (const part of parts) {
+          const match = /^\[(\d+)\]$/.exec(part);
+          const citation = match ? citationMap.get(match[1]) : null;
+          if (!citation) {
+            fragment.appendChild(document.createTextNode(part));
+            continue;
+          }
+          const reference = document.createElement('sup');
+          reference.className = 'citation-ref';
+          reference.tabIndex = 0;
+          reference.textContent = part;
+          const score = `${Math.round((citation.score || 0) * 100)}%`;
+          reference.title = `${citation.filename || '来源'} · 相关度 ${score}\n${citation.content || ''}`;
+          fragment.appendChild(reference);
+        }
+        node.replaceWith(fragment);
+      }
+    }
+
+    function appendMessage(role, text = '') {
+      byId('welcome').classList.add('hidden');
+      const article = document.createElement('article');
+      article.className = `flex gap-3 ${role === 'user' ? 'flex-row-reverse self-end' : 'self-start'} w-full max-w-3xl`;
+      const avatar = document.createElement('div');
+      avatar.className = `mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${role === 'user' ? 'border-slate-600 bg-raised text-slate-400' : 'border-teal-400/25 bg-teal-400/10 text-teal-300'}`;
+      avatar.innerHTML = `<i data-lucide="${role === 'user' ? 'user' : 'bot'}" class="icon-sm"></i>`;
+      const content = document.createElement('div');
+      content.className = role === 'user'
+        ? 'markdown max-w-[82%] rounded-md border border-teal-500/20 bg-teal-400/10 px-3 py-2.5 text-sm'
+        : 'markdown min-w-0 flex-1 rounded-md border border-line bg-panel px-3.5 py-3 text-sm';
+      renderMarkdown(content, text);
+      article.append(avatar, content);
+      byId('chatMessages').appendChild(article);
+      refreshIcons();
+      scrollChat();
+      return { article, content };
+    }
+
+    function renderSources(article, citations) {
+      article.querySelector('.source-list')?.remove();
+      if (!citations.length) return;
+      const sourceList = document.createElement('div');
+      sourceList.className = 'source-list mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2';
+      for (const citation of citations) {
+        const source = document.createElement('span');
+        source.className = 'max-w-full truncate rounded border border-line bg-ink px-2 py-1 text-[10px] text-slate-500';
+        source.textContent = `[${citation.ref}] ${citation.filename || '来源'}`;
+        source.title = citation.content || '';
+        sourceList.appendChild(source);
+      }
+      article.querySelector('.markdown').appendChild(sourceList);
+    }
+
+    function scrollChat() {
+      const scroller = byId('chatScroll');
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    async function readSse(response, onPayload) {
+      if (!response.body) throw new Error('浏览器未提供流式响应体');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let textBuffer = '';
+      let dataLines = [];
+      let doneSignal = false;
+
+      const dispatchEvent = async () => {
+        if (!dataLines.length) return;
+        const data = dataLines.join('\n');
+        dataLines = [];
+        if (!data) return;
+        if (data.trim() === '[DONE]') {
+          doneSignal = true;
+          return;
+        }
+        await onPayload(JSON.parse(data));
+      };
+
+      const consumeLine = async (line) => {
+        if (line === '') {
+          await dispatchEvent();
+          return;
+        }
+        if (line.startsWith(':')) return;
+        const separator = line.indexOf(':');
+        const field = separator === -1 ? line : line.slice(0, separator);
+        let value = separator === -1 ? '' : line.slice(separator + 1);
+        if (value.startsWith(' ')) value = value.slice(1);
+        if (field === 'data') dataLines.push(value);
+      };
+
+      const consumeText = async (final = false) => {
+        const lines = [];
+        let start = 0;
+        for (let index = 0; index < textBuffer.length; index += 1) {
+          const character = textBuffer[index];
+          if (character === '\n') {
+            const end = index > start && textBuffer[index - 1] === '\r' ? index - 1 : index;
+            lines.push(textBuffer.slice(start, end));
+            start = index + 1;
+          } else if (character === '\r') {
+            if (index + 1 === textBuffer.length && !final) break;
+            if (textBuffer[index + 1] !== '\n') {
+              lines.push(textBuffer.slice(start, index));
+              start = index + 1;
+            }
+          }
+        }
+        textBuffer = textBuffer.slice(start);
+        if (final && textBuffer) {
+          lines.push(textBuffer);
+          textBuffer = '';
+        }
+        for (const line of lines) {
+          await consumeLine(line);
+          if (doneSignal) break;
+        }
+      };
+
+      try {
+        while (!doneSignal) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          textBuffer += decoder.decode(value, { stream: true });
+          await consumeText(false);
+        }
+        if (!doneSignal) {
+          textBuffer += decoder.decode();
+          await consumeText(true);
+          await dispatchEvent();
+        }
+      } finally {
+        try {
+          await reader.cancel();
+        } catch (error) {
+          // The original read, abort, parse, or callback error remains authoritative.
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    }
+
+    async function sendMessage() {
+      const input = byId('chatInput');
+      const query = input.value.trim();
+      if (!query || !state.selectedKbIds.length || state.streaming) return;
+      input.value = '';
+      input.style.height = 'auto';
+      appendMessage('user', query);
+      const assistant = appendMessage('assistant');
+      assistant.content.innerHTML = '<div class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="loader-circle" class="icon-sm spin"></i><span>检索并生成中</span></div>';
+      refreshIcons();
+
+      state.streaming = true;
+      state.abortController = new AbortController();
+      updateComposer();
+      refreshIcons();
+      let fullText = '';
+      let citations = [];
+
+      try {
+        const response = await fetch(`${API_BASE}/api/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: state.abortController.signal,
+          body: JSON.stringify({
+            query,
+            kb_ids: state.selectedKbIds,
+            top_k: Number(state.settings.topK),
+            score_threshold: Number(state.settings.threshold),
+            hybrid_alpha: Number(state.settings.alpha),
+            enable_reranker: Boolean(state.settings.reranker),
+            system_prompt: state.settings.systemPrompt,
+            stream: true
+          })
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new ApiError(errorMessage(payload, `对话请求失败 (${response.status})`), response.status, payload);
+        }
+        await readSse(response, (payload) => {
+          if (payload.error) throw new Error(payload.message || '模型服务返回错误');
+          if (payload.citations) {
+            citations = payload.citations;
+            renderMarkdown(assistant.content, fullText, citations);
+            return;
+          }
+          const delta = payload.choices?.[0]?.delta?.content || '';
+          if (delta) {
+            fullText += delta;
+            renderMarkdown(assistant.content, fullText, citations);
+            scrollChat();
+          }
+        });
+        if (!fullText) renderMarkdown(assistant.content, '模型未返回正文。', citations);
+        renderSources(assistant.article, citations);
+      } catch (error) {
+        const message = error.name === 'AbortError' ? '已停止生成。' : `请求失败：${error.message}`;
+        renderMarkdown(assistant.content, message, citations);
+      } finally {
+        state.streaming = false;
+        state.abortController = null;
+        updateComposer();
+        refreshIcons();
+        input.focus();
+      }
+    }
+
+    let settingsSaveTimer = null;
+
+    async function saveSettings({ close = true, notify = true } = {}) {
+      window.clearTimeout(settingsSaveTimer);
+      const alpha = Number(byId('alphaInput').value);
+      const threshold = Number(byId('thresholdInput').value);
+      const topK = Number.parseInt(byId('topKInput').value, 10);
+      const systemPrompt = byId('systemPromptInput').value.trim();
+      const bounded = (id, fallback, min, max) => {
+        const value = Number(byId(id).value);
+        return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+      };
+      const apiKey = byId('llmApiKeyInput').value.trim();
+      const payload = {
+        system_prompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
+        search_default_alpha: Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : DEFAULT_SETTINGS.alpha,
+        search_default_threshold: Number.isFinite(threshold) ? Math.min(1, Math.max(0, threshold)) : DEFAULT_SETTINGS.threshold,
+        search_default_top_k: Number.isFinite(topK) ? Math.min(50, Math.max(1, topK)) : DEFAULT_SETTINGS.topK,
+        use_reranker: byId('useRerankerConfigInput').checked,
+        llm_api_url: byId('llmApiUrlInput').value.trim(),
+        llm_model: byId('llmModelInput').value.trim(),
+        chunk_default_size: bounded('chunkSizeInput', 1000, 200, 4000),
+        chunk_default_overlap: bounded('chunkOverlapInput', 200, 0, 500),
+        max_upload_size_mb: bounded('maxUploadSizeInput', 50, 1, 2048),
+        max_files_per_batch: bounded('maxFilesInput', 20, 1, 200),
+        embedding_model_name: byId('embeddingModelInput').value.trim(),
+        embedding_device: byId('embeddingDeviceInput').value,
+        embedding_batch_size: bounded('embeddingBatchInput', 32, 1, 512),
+        reranker_model_name: byId('rerankerModelInput').value.trim(),
+        bm25_k1: bounded('bm25K1Input', 1.5, 0, 10),
+        bm25_b: bounded('bm25BInput', 0.75, 0, 1),
+        app_name: byId('appNameInput').value.trim(),
+        app_version: byId('appVersionInput').value.trim(),
+        debug: byId('debugInput').checked,
+        use_unstructured: byId('unstructuredInput').checked,
+        database_url: byId('databaseUrlInput').value.trim(),
+        chroma_persist_dir: byId('chromaDirInput').value.trim(),
+        chroma_collection_name: byId('chromaCollectionInput').value.trim(),
+        upload_temp_dir: byId('uploadDirInput').value.trim()
+      };
+      if (apiKey) payload.llm_api_key = apiKey;
+      const button = byId('saveSettingsButton');
+      button.disabled = true;
+      try {
+        const response = await api('/api/v1/settings', jsonOptions('PATCH', payload));
+        const server = response.settings || {};
+        state.settings = {
+          ...state.settings,
+          ...server,
+          alpha: Number(server.search_default_alpha ?? payload.search_default_alpha),
+          threshold: Number(server.search_default_threshold ?? payload.search_default_threshold),
+          topK: Number(server.search_default_top_k ?? payload.search_default_top_k),
+          reranker: Boolean(server.use_reranker ?? payload.use_reranker),
+          systemPrompt: server.system_prompt || payload.system_prompt
+        };
+        if (apiKey) state.llmApiKey = apiKey;
+        saveLocalState();
+        renderAll();
+        if (close) closeDrawer();
+        if (notify) toast('全部设置已实时保存', 'success');
+      } catch (error) {
+        toast(`设置保存失败：${error.message}`, 'error');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function scheduleSettingsSave() {
+      window.clearTimeout(settingsSaveTimer);
+      settingsSaveTimer = window.setTimeout(() => {
+        saveSettings({ close: false, notify: false });
+      }, 700);
+    }
+
+    async function updateHealth() {
+      try {
+        const health = await api('/health');
+        byId('healthDot').className = `status-dot ${health.status === 'ok' ? 'bg-emerald-400' : 'bg-amber-300'}`;
+        byId('healthText').textContent = health.status === 'ok' ? '服务正常' : '部分服务异常';
+      } catch (error) {
+        byId('healthDot').className = 'status-dot bg-red-400';
+        byId('healthText').textContent = '服务未连接';
+      }
+    }
+
+    function bindEvents() {
+      byId('openSidebarButton').addEventListener('click', openMobileSidebar);
+      byId('closeSidebarButton').addEventListener('click', closeMobileSidebar);
+      byId('mobileOverlay').addEventListener('click', closeMobileSidebar);
+      byId('settingsButton').addEventListener('click', openDrawer);
+      byId('closeDrawerButton').addEventListener('click', closeDrawer);
+      byId('drawerOverlay').addEventListener('click', closeDrawer);
+      byId('newKbButton').addEventListener('click', openKbModal);
+      byId('closeKbModalButton').addEventListener('click', closeKbModal);
+      byId('cancelKbButton').addEventListener('click', closeKbModal);
+      byId('kbForm').addEventListener('submit', createKnowledgeBase);
+      byId('refreshButton').addEventListener('click', async () => {
+        try {
+          await loadCoreData();
+          toast('知识库已刷新', 'success');
+        } catch (error) {
+          toast(error.message, 'error');
+        }
+      });
+      byId('kbFilter').addEventListener('input', () => {
+        renderSidebar();
+        refreshIcons();
+      });
+      byId('sidebarKbList').addEventListener('click', (event) => {
+        const deleteButton = event.target.closest('[data-delete-kb]');
+        if (deleteButton) {
+          deleteKnowledgeBase(deleteButton.dataset.deleteKb);
+          return;
+        }
+        const button = event.target.closest('[data-activate-kb]');
+        if (button) activateKb(button.dataset.activateKb).catch((error) => toast(error.message, 'error'));
+      });
+      byId('sidebarKbList').addEventListener('change', (event) => {
+        const input = event.target.closest('[data-scope-kb]');
+        if (input) toggleScope(input.dataset.scopeKb, input.checked);
+      });
+      byId('drawerKbList').addEventListener('change', (event) => {
+        const input = event.target.closest('[data-drawer-scope-kb]');
+        if (input) toggleScope(input.dataset.drawerScopeKb, input.checked);
+      });
+      byId('documentList').addEventListener('click', (event) => {
+        const button = event.target.closest('[data-delete-document]');
+        if (button) deleteDocument(button.dataset.deleteDocument);
+      });
+      byId('activeKbSelect').addEventListener('change', (event) => {
+        if (event.target.value) activateKb(event.target.value).catch((error) => toast(error.message, 'error'));
+      });
+      byId('importButton').addEventListener('click', () => byId('fileInput').click());
+      byId('fileInput').addEventListener('change', (event) => {
+        const files = Array.from(event.target.files || []);
+        event.target.value = '';
+        importDocuments(files);
+      });
+      byId('alphaInput').addEventListener('input', (event) => {
+        byId('alphaValue').textContent = Number(event.target.value).toFixed(2);
+        scheduleSettingsSave();
+      });
+      [
+        'thresholdInput', 'topKInput', 'rerankerInput', 'systemPromptInput',
+        'llmApiUrlInput', 'llmApiKeyInput', 'llmModelInput', 'chunkSizeInput',
+        'chunkOverlapInput', 'maxUploadSizeInput', 'maxFilesInput',
+        'embeddingModelInput', 'embeddingDeviceInput', 'embeddingBatchInput',
+        'rerankerModelInput', 'useRerankerConfigInput', 'bm25K1Input',
+        'bm25BInput', 'appNameInput', 'appVersionInput', 'debugInput', 'unstructuredInput',
+        'databaseUrlInput', 'chromaDirInput', 'chromaCollectionInput', 'uploadDirInput'
+      ].forEach((id) => {
+        byId(id).addEventListener('input', scheduleSettingsSave);
+        byId(id).addEventListener('change', scheduleSettingsSave);
+      });
+      byId('saveSettingsButton').addEventListener('click', saveSettings);
+      byId('chatInput').addEventListener('input', (event) => {
+        event.target.style.height = 'auto';
+        event.target.style.height = `${Math.min(event.target.scrollHeight, 144)}px`;
+        updateComposer();
+        refreshIcons();
+      });
+      byId('chatInput').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage();
+        }
+      });
+      byId('sendButton').addEventListener('click', () => {
+        if (state.streaming) state.abortController?.abort();
+        else sendMessage();
+      });
+      document.querySelectorAll('.quick-question').forEach((button) => {
+        button.addEventListener('click', () => {
+          byId('chatInput').value = button.dataset.question;
+          updateComposer();
+          sendMessage();
+        });
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeDrawer();
+          closeKbModal();
+          closeMobileSidebar();
+        }
+      });
+    }
+
+    async function init() {
+      bindEvents();
+      await loadRuntimeSettings();
+      renderAll();
+      updateHealth();
+      try {
+        await loadCoreData({ restore: true });
+      } catch (error) {
+        byId('sidebarKbList').innerHTML = `<div class="px-3 py-8 text-center text-xs text-red-300">${escapeHtml(error.message)}</div>`;
+        toast(`初始化失败：${error.message}`, 'error');
+      }
+      window.setInterval(updateHealth, 30000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Local configuration and secrets
+backend/.env
+backend/app/data/*
+!backend/app/data/.gitkeep
+
+# Runtime data, uploads, logs, and model/vector caches
+backend/data/
+backend/uploads/
+output/
+.playwright-cli/
+*.log
+*.db
+*.db-*
+
+# Python environments and build artifacts
+backend/venv/
+__pycache__/
+*.py[cod]
+backend/dist/
+backend/build/
+*.spec.bak
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

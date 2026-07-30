@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: enterprise-kb-postgres
+    environment:
+      POSTGRES_DB: enterprise_kb
+      POSTGRES_USER: enterprise_kb
+      POSTGRES_PASSWORD: change-me-before-production
+    ports:
+      - "5432:5432"
+    volumes:
+      - kb_pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U enterprise_kb -d enterprise_kb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  kb_pg_data:
