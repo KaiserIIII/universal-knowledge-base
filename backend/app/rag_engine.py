@@ -18,6 +18,9 @@ import threading
 import time
 import uuid
 import warnings
+import re
+import zipfile
+from xml.etree import ElementTree
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from collections import defaultdict
@@ -36,8 +39,8 @@ logger = logging.getLogger("rag_engine")
 class LocalEmbedding:
     """本地加载 BGE 中文 Embedding 模型，慢启动但零 API 依赖"""
 
-    def __init__(self):
-        cfg = get_settings()
+    def __init__(self, settings=None):
+        cfg = settings if settings is not None else get_settings()
         self.model_name = cfg.embedding_model_name
         self.device = cfg.embedding_device
         self.batch_size = cfg.embedding_batch_size
@@ -68,14 +71,14 @@ class LocalEmbedding:
                         logger.warning("MPS is not available; falling back to CPU for embeddings")
                 except ImportError:
                     self.device = "cpu"
-            logger.info(f"Loading embedding model: {self.model_name} on {self.device}...")
+            logger.info("Embedding model loading")
             from sentence_transformers import SentenceTransformer
             try:
                 model = await asyncio.to_thread(SentenceTransformer, self.model_name, device=self.device)
-            except (AssertionError, RuntimeError) as error:
+            except (AssertionError, RuntimeError):
                 if self.device == "cpu":
                     raise
-                logger.warning("Embedding device %s failed (%s); retrying on CPU", self.device, error)
+                logger.warning("Embedding device failed; retrying on CPU")
                 self.device = "cpu"
                 model = await asyncio.to_thread(SentenceTransformer, self.model_name, device="cpu")
             self._model = model
@@ -129,8 +132,8 @@ class LocalEmbedding:
 class LocalReranker:
     """本地 BGE-Reranker，重启排序精度"""
 
-    def __init__(self):
-        cfg = get_settings()
+    def __init__(self, settings=None):
+        cfg = settings if settings is not None else get_settings()
         self.model_name = cfg.reranker_model_name
         self.enabled = cfg.use_reranker
         self._model = None
@@ -142,7 +145,7 @@ class LocalReranker:
         async with self._lock:
             if self._model is not None:
                 return
-            logger.info(f"Loading reranker: {self.model_name}...")
+            logger.info("Reranker model loading")
             model = await asyncio.to_thread(self._load_sync)
             self._model = model
             logger.info("Reranker loaded.")
@@ -308,20 +311,22 @@ class LocalBM25:
 # 4. DocumentProcessor — 文档解析 + 语义切分
 # ══════════════════════════════════════════════════════════════════
 class DocumentProcessor:
+    OFFICE_MAX_TEXT_CHARS = 5_000_000
     SEMANTIC_SEPARATORS = [
         "\n\n\n", "\n\n", "\n", "。", "！", "？", "；", "：", "…",
         ". ", "! ", "? ", "; ", ": ", "、", "，", ", ", " ", "",
     ]
 
-    def __init__(self, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
-        cfg = get_settings()
+    def __init__(self, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None,
+                 settings=None, use_unstructured: Optional[bool] = None):
+        cfg = settings if settings is not None else get_settings()
         self.chunk_size = chunk_size if chunk_size is not None else cfg.chunk_default_size
         self.chunk_overlap = (
             chunk_overlap if chunk_overlap is not None else cfg.chunk_default_overlap
         )
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("chunk_overlap must be smaller than chunk_size")
-        self.use_unstructured = cfg.use_unstructured
+        self.use_unstructured = cfg.use_unstructured if use_unstructured is None else use_unstructured
 
         self.text_splitter = RecursiveCharacterTextSplitter(
             separators=self.SEMANTIC_SEPARATORS,
@@ -368,24 +373,132 @@ class DocumentProcessor:
     def _parse_file(self, file_path: str, filename: str) -> str:
         ext = Path(filename).suffix.lower()
 
+        # Bound archive/XML expansion before any optional Office parser sees it.
+        if ext in {'.docx', '.xlsx', '.pptx'}:
+            return self._parse_office(file_path, ext)
+
         if self.use_unstructured:
             try:
                 return self._parse_unstructured(file_path)
-            except Exception as error:
-                logger.warning(
-                    "unstructured failed for %s, using local parser: %s",
-                    filename,
-                    error,
-                )
+            except Exception:
+                logger.warning("Optional parser failed; using local parser")
 
         if ext == ".pdf":
             return self._parse_pdf(file_path)
-        elif ext in (".docx", ".doc"):
+        elif ext == ".doc":
             return self._parse_docx(file_path)
         elif ext in (".html", ".htm"):
             return self._parse_html(file_path)
         else:
             return Path(file_path).read_text(encoding="utf-8", errors="replace")
+
+    def _parse_office(self, file_path: str, ext: str) -> str:
+        """Bounded text-only Office reader; no extraction, macros, links or OCR."""
+        def local(tag):
+            return tag.rsplit('}', 1)[-1]
+
+        def text_nodes(node):
+            return ''.join(child.text or '' for child in node.iter() if local(child.tag) == 't')
+
+        with zipfile.ZipFile(file_path) as archive:
+            infos = archive.infolist()
+            if len(infos) > 2000 or sum(info.file_size for info in infos) > 50 * 1024 * 1024:
+                raise ValueError('Office archive exceeds expansion limit')
+            names = set()
+            for info in infos:
+                name = info.filename
+                if (name in names or '\\' in name or name.startswith('/') or ':' in name
+                        or '..' in name.split('/') or info.flag_bits & 1
+                        or info.file_size > 8 * 1024 * 1024
+                        or info.file_size > max(info.compress_size, 1) * 1000):
+                    raise ValueError('Unsafe Office archive member')
+                names.add(name)
+
+            def xml(name):
+                data = archive.read(name)
+                lowered = data.replace(b'\x00', b'').lower()
+                if b'<!doctype' in lowered or b'<!entity' in lowered:
+                    raise ValueError('XML declarations are not supported')
+                try:
+                    return ElementTree.fromstring(data)
+                except ElementTree.ParseError as error:
+                    raise ValueError('Invalid Office XML') from error
+
+            parts, total_chars, count = [], 0, 0
+            def append(value):
+                nonlocal total_chars, count
+                # Account for final join separators as well as stored text.
+                total_chars += len(value) + (2 if parts and value.strip() else 0)
+                count += 1
+                if total_chars > self.OFFICE_MAX_TEXT_CHARS or count > 200_000:
+                    raise ValueError('Office text exceeds processing limit')
+                if value.strip():
+                    parts.append(value)
+
+            if ext == '.docx':
+                if 'word/document.xml' not in names:
+                    raise ValueError('Invalid Word archive')
+                for node in xml('word/document.xml').iter():
+                    if local(node.tag) == 'p':
+                        append(text_nodes(node))
+            elif ext == '.pptx':
+                selected = sorted((name for name in names if re.fullmatch(r'ppt/slides/slide\d+\.xml', name)),
+                    key=lambda name: int(re.search(r'(\d+)\.xml$', name).group(1)))
+                if not selected:
+                    raise ValueError('Invalid PowerPoint archive')
+                for name in selected:
+                    append('[Slide ' + re.search(r'(\d+)\.xml$', name).group(1) + ']')
+                    for node in xml(name).iter():
+                        if local(node.tag) == 'p':
+                            append(text_nodes(node))
+            else:
+                shared = []
+                if 'xl/sharedStrings.xml' in names:
+                    for node in xml('xl/sharedStrings.xml').iter():
+                        if local(node.tag) == 'si':
+                            shared.append(text_nodes(node))
+                            if len(shared) > 200_000:
+                                raise ValueError('Too many shared strings')
+                selected = sorted((name for name in names if re.fullmatch(r'xl/worksheets/sheet\d+\.xml', name)),
+                    key=lambda name: int(re.search(r'(\d+)\.xml$', name).group(1)))
+                if not selected:
+                    raise ValueError('Invalid spreadsheet archive')
+                rows = cells = 0
+                for name in selected:
+                    append('[Sheet ' + re.search(r'(\d+)\.xml$', name).group(1) + ']')
+                    for row in xml(name).iter():
+                        if local(row.tag) != 'row':
+                            continue
+                        rows += 1
+                        if rows > 100_000:
+                            raise ValueError('Too many spreadsheet rows')
+                        values, row_chars = [], 0
+                        for cell in row:
+                            if local(cell.tag) != 'c':
+                                continue
+                            cells += 1
+                            if cells > 200_000:
+                                raise ValueError('Too many spreadsheet cells')
+                            value = next((node.text or '' for node in cell if local(node.tag) == 'v'), '')
+                            if cell.get('t') == 's':
+                                try:
+                                    index = int(value)
+                                    if index < 0:
+                                        raise ValueError('Invalid shared-string index')
+                                    value = shared[index]
+                                except (IndexError, ValueError) as error:
+                                    raise ValueError('Invalid shared-string reference') from error
+                            elif cell.get('t') == 'inlineStr':
+                                value = text_nodes(cell)
+                            # Shared strings can fan out far beyond ZIP/XML size.
+                            # Check resolved cell text and separators before a
+                            # row join can allocate the expanded representation.
+                            row_chars += len(value) + (3 if values else 0)
+                            if total_chars + (2 if parts else 0) + row_chars > self.OFFICE_MAX_TEXT_CHARS:
+                                raise ValueError('Office text exceeds processing limit')
+                            values.append(value)
+                        append(' | '.join(values))
+            return '\n\n'.join(parts)
 
     def _parse_unstructured(self, file_path: str) -> str:
         from unstructured.partition.auto import partition
@@ -441,20 +554,32 @@ class DocumentProcessor:
                 tag.decompose()
             return soup.get_text(separator="\n")
         except ImportError:
-            # fallback: strip tags crudely
-            import re
-            text = Path(file_path).read_text(encoding="utf-8", errors="replace")
-            text = re.sub(r"<[^>]+>", " ", text)
-            text = re.sub(r"\s+", " ", text)
-            return text
+            from html.parser import HTMLParser
+            class VisibleText(HTMLParser):
+                def __init__(self):
+                    super().__init__(convert_charrefs=True)
+                    self.parts, self.hidden = [], []
+                def handle_starttag(self, tag, attrs):
+                    if tag in {'script', 'style', 'nav', 'footer', 'header'}:
+                        self.hidden.append(tag)
+                def handle_endtag(self, tag):
+                    if self.hidden and tag == self.hidden[-1]:
+                        self.hidden.pop()
+                def handle_data(self, data):
+                    if not self.hidden and data.strip():
+                        self.parts.append(data.strip())
+            parser = VisibleText()
+            parser.feed(Path(file_path).read_text(encoding='utf-8', errors='replace'))
+            parser.close()
+            return '\n'.join(parser.parts)
 
 
 # ══════════════════════════════════════════════════════════════════
 # 5. RAGEngine — 核心引擎 (ChromaDB + 本地 BM25)
 # ══════════════════════════════════════════════════════════════════
 class RAGEngine:
-    def __init__(self):
-        cfg = get_settings()
+    def __init__(self, settings=None):
+        cfg = settings if settings is not None else get_settings()
         self.cfg = cfg
         self.embedder: Optional[LocalEmbedding] = None
         self.reranker: Optional[LocalReranker] = None
@@ -495,19 +620,19 @@ class RAGEngine:
             self.chroma_client, self.chroma_collection = await asyncio.to_thread(
                 self._init_chroma_sync
             )
-            logger.info("ChromaDB initialized: %s / %s", self.persist_dir, self.collection_name)
+            logger.info("ChromaDB initialized")
 
-            self.embedder = LocalEmbedding()
+            self.embedder = LocalEmbedding(settings=self.cfg)
             await self.embedder._ensure_loaded()
 
             self.bm25 = LocalBM25(k1=self.cfg.bm25_k1, b=self.cfg.bm25_b)
             await self._restore_bm25_index()
 
-            self.reranker = LocalReranker()
+            self.reranker = LocalReranker(settings=self.cfg)
             if self.cfg.use_reranker:
                 await self.reranker._ensure_loaded()
 
-            self.processor = DocumentProcessor()
+            self.processor = DocumentProcessor(settings=self.cfg)
             self._ready = True
             logger.info("RAG Engine ready (embedded mode).")
 
@@ -680,9 +805,9 @@ class RAGEngine:
                             "chunk_index": (chroma_hits["metadatas"][0][j] or {}).get("chunk_index", 0) if chroma_hits["metadatas"] else 0,
                         }
                 return results
-            except Exception as e:
-                logger.error(f"Vector search error: {e}")
-                return {}
+            except Exception:
+                logger.error("Vector search failed")
+                raise RuntimeError("Vector search unavailable") from None
 
         async def bm25_search() -> dict:
             if hybrid_alpha >= 1.0:
@@ -707,9 +832,9 @@ class RAGEngine:
                             "chunk_index": hit.get("chunk_index", 0),
                         }
                 return results
-            except Exception as e:
-                logger.error(f"BM25 search error: {e}")
-                return {}
+            except Exception:
+                logger.error("BM25 search failed")
+                raise RuntimeError("BM25 search unavailable") from None
 
         vec_results, bm25_results = await asyncio.gather(
             vector_search(),
@@ -739,7 +864,7 @@ class RAGEngine:
 
         bm25_scores = normalize_bm25(bm25_results)
 
-        # If one retrieval path fails or produces no usable candidates, its
+        # If one retrieval path successfully produces no usable candidates, its
         # configured weight must not suppress the healthy path. Explicit pure
         # vector/keyword modes still behave as requested because the other
         # path is not executed at alpha=1/0.

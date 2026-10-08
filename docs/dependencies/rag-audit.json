@@ -1,0 +1,123 @@
+[
+  {
+    "package": "aiofiles",
+    "installed_version": "25.1.0",
+    "repository": "https://github.com/Tinche/aiofiles",
+    "release_tag": "v25.1.0",
+    "commit": "348f5ef6561c2b2c8a7497bd10487eab4102332f",
+    "license": "Apache-2.0",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "sentence-transformers",
+    "installed_version": "5.6.1",
+    "repository": "https://github.com/huggingface/sentence-transformers",
+    "release_tag": "v5.6.1",
+    "commit": "7d3eb16a65f62045226e08082ade63cbc71c97a4",
+    "license": "Apache-2.0",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "FlagEmbedding",
+    "installed_version": "1.4.0",
+    "repository": "https://github.com/FlagOpen/FlagEmbedding",
+    "release_tag": "v1.4.0",
+    "commit": "7ed43d67ec03fbe5c31c0992dbfa941fb1860549",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "jieba",
+    "installed_version": "0.42.1",
+    "repository": "https://github.com/fxsjy/jieba",
+    "release_tag": "v0.42.1",
+    "commit": "1e20c89b66f56c9301b0feed211733ffaa1bd72a",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "chromadb",
+    "installed_version": "1.5.9",
+    "repository": "https://github.com/chroma-core/chroma",
+    "release_tag": "1.5.9",
+    "commit": "11f3c7435e71024aa0a2b53710a28d3289d922d1",
+    "license": "Apache-2.0",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "pypdf",
+    "installed_version": "6.14.2",
+    "repository": "https://github.com/py-pdf/pypdf",
+    "release_tag": "6.14.2",
+    "commit": "2266ee853d1420c8774f6657ce3b8f1502cac713",
+    "license": "BSD-3-Clause",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "python-docx",
+    "installed_version": "1.2.0",
+    "repository": "https://github.com/python-openxml/python-docx",
+    "release_tag": "v1.2.0",
+    "commit": "e45454602b53e8e572b179ccf1c91093ec9f4ed7",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "lxml",
+    "installed_version": "6.1.1",
+    "repository": "https://github.com/lxml/lxml",
+    "release_tag": "lxml-6.1.1",
+    "commit": "b4a4c595fb875d6f50ae113449834209a364643a",
+    "license": "BSD-3-Clause (see upstream exceptions)",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "langchain-text-splitters",
+    "installed_version": "1.1.2",
+    "repository": "https://github.com/langchain-ai/langchain",
+    "release_tag": "langchain-text-splitters==1.1.2",
+    "commit": "58c4e5bbdd9d18d7fe7ec83b5a05477d06fe2a8e",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "unstructured",
+    "installed_version": "0.24.1",
+    "repository": "https://github.com/Unstructured-IO/unstructured",
+    "release_tag": "0.24.1",
+    "commit": "cda16b3f2170019be9c6ea5635946fb3eaa2d66f",
+    "license": "Apache-2.0",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official release ref resolved to commit and upstream license inspected."
+  },
+  {
+    "package": "beautifulsoup4",
+    "installed_version": "4.15.0",
+    "repository": "https://git.launchpad.net/beautifulsoup",
+    "release_tag": "4.15.0",
+    "commit": "57443d602fb091bb89b638875b2f410f439094df",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "review": "Official homepage source link, remote release ref and license inspected. GitHub mirror was not used."
+  }
+]

@@ -1,0 +1,123 @@
+[
+  {
+    "package": "fastapi",
+    "repository": "https://github.com/fastapi/fastapi",
+    "release_tag": "0.140.7",
+    "commit": "98b12fe56f97107e71a20fc1cf334ccfa590efb5",
+    "license": "MIT",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "0.140.7"
+  },
+  {
+    "package": "uvicorn",
+    "repository": "https://github.com/Kludex/uvicorn",
+    "release_tag": "0.51.0",
+    "commit": "e4d0b05eb8c6459b7ba27ad13a2c2f4f8d4ece50",
+    "license": "BSD-3-Clause",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "0.51.0"
+  },
+  {
+    "package": "sqlalchemy",
+    "repository": "https://github.com/sqlalchemy/sqlalchemy",
+    "release_tag": "rel_2_0_51",
+    "commit": "c8e26d5c9ffcde0a82b4b7fa5de27f0c6bc46bec",
+    "license": "MIT",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "2.0.51"
+  },
+  {
+    "package": "aiosqlite",
+    "repository": "https://github.com/omnilib/aiosqlite",
+    "release_tag": "v0.22.1",
+    "commit": "9b127cecc7de843bf4f343b6da63b641866533fb",
+    "license": "MIT",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "0.22.1"
+  },
+  {
+    "package": "asyncpg",
+    "repository": "https://github.com/MagicStack/asyncpg",
+    "release_tag": "v0.31.0",
+    "commit": "71775a67277fc0aa5bd2b9f15e848826d7078c4d",
+    "license": "Apache-2.0",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "0.31.0"
+  },
+  {
+    "package": "pydantic",
+    "repository": "https://github.com/pydantic/pydantic",
+    "release_tag": "v2.13.4",
+    "commit": "cf67d4b3193c3fe43ede18612ed62785eee11382",
+    "license": "MIT",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "2.13.4"
+  },
+  {
+    "package": "pydantic-settings",
+    "repository": "https://github.com/pydantic/pydantic-settings",
+    "release_tag": "v2.14.2",
+    "commit": "d703bd717e5e07439fa89da2245eee6139413e9e",
+    "license": "MIT",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "2.14.2"
+  },
+  {
+    "package": "httpx",
+    "repository": "https://github.com/encode/httpx",
+    "release_tag": "0.28.1",
+    "commit": "26d48e0634e6ee9cdc0533996db289ce4b430177",
+    "license": "BSD-3-Clause",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "0.28.1"
+  },
+  {
+    "package": "python-multipart",
+    "repository": "https://github.com/Kludex/python-multipart",
+    "release_tag": "0.0.32",
+    "commit": "238ead62a0bb6f6cdfe122708faa13812f59f9a6",
+    "license": "Apache-2.0",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "0.0.32"
+  },
+  {
+    "package": "aiofiles",
+    "repository": "https://github.com/Tinche/aiofiles",
+    "release_tag": "v25.1.0",
+    "commit": "348f5ef6561c2b2c8a7497bd10487eab4102332f",
+    "license": "Apache-2.0",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "25.1.0"
+  },
+  {
+    "package": "python-dotenv",
+    "repository": "https://github.com/theskumar/python-dotenv",
+    "release_tag": "v1.2.2",
+    "commit": "36004e0e34be7665ff2b11a8a4005144f76f176d",
+    "license": "BSD-3-Clause",
+    "review": "Official upstream release ref and installed package metadata inspected.",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: existing environment; no package installed by this operation.",
+    "installed_version": "1.2.2"
+  }
+]

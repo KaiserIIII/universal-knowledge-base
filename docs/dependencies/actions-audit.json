@@ -1,0 +1,26 @@
+[
+  {
+    "repository": "https://github.com/actions/checkout",
+    "tag_reviewed": "v6",
+    "commit": "d23441a48e516b6c34aea4fa41551a30e30af803",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Not installed locally; proposed CI use."
+  },
+  {
+    "repository": "https://github.com/actions/setup-python",
+    "tag_reviewed": "v6",
+    "commit": "ece7cb06caefa5fff74198d8649806c4678c61a1",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Not installed locally; proposed CI use."
+  },
+  {
+    "repository": "https://github.com/actions/upload-artifact",
+    "tag_reviewed": "v4",
+    "commit": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Not installed locally; proposed CI use."
+  }
+]
