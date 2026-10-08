@@ -4,7 +4,7 @@
 
 Zhixu is a free, open-source, self-hosted knowledge workspace for internal teams and customer-support operations. It keeps documents, retrieval, model connections, visual workflows, evidence citations, feedback and evaluation inside the deployment you control.
 
-The product brand is **Zhixu · Enterprise Knowledge**. The repository slug `universal-knowledge-base` is retained for link compatibility.
+The product brand is **Zhixu · Enterprise Knowledge**. The canonical repository is [KaiserIIII/zhixu](https://github.com/KaiserIIII/zhixu). Links to the former `universal-knowledge-base` repository redirect here; the branch with that name preserves the original release.
 
 ## Capabilities
 
@@ -53,6 +53,8 @@ Every organization-scoped query is checked through SQL membership. Retrieval res
 Use Python 3.13, verified locally on Windows:
 
 ```powershell
+git clone https://github.com/KaiserIIII/zhixu.git
+cd zhixu
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r backend/requirements-rag.lock
 Copy-Item backend/.env.template backend/.env

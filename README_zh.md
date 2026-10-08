@@ -4,7 +4,7 @@
 
 知序是免费、开源、自托管的企业知识工作空间，面向内部团队与客服团队。文档、检索、模型连接、可视化工作流、证据引用、会话反馈和评测都运行在部署者控制的环境中。
 
-产品品牌保持为 **知序**，英文为 **Zhixu · Enterprise Knowledge**。`universal-knowledge-base` 作为仓库 slug 保留，用于兼容已有链接。
+产品品牌为 **知序**，英文为 **Zhixu · Enterprise Knowledge**，正式仓库为 [KaiserIIII/zhixu](https://github.com/KaiserIIII/zhixu)。旧仓库 `universal-knowledge-base` 的链接会重定向至此；同名分支继续保留最原始版本。
 
 ## 功能
 
@@ -53,6 +53,8 @@ flowchart LR
 使用 Python 3.13，本地验证环境为 Windows：
 
 ```powershell
+git clone https://github.com/KaiserIIII/zhixu.git
+cd zhixu
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r backend/requirements-rag.lock
 Copy-Item backend/.env.template backend/.env

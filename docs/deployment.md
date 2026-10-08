@@ -2,6 +2,24 @@
 
 知序免费、开源、自托管，默认不收集遥测数据。成员、知识库、文档和回答次数默认不限，核心服务不依赖外部商业服务。
 
+## 获取源码与已有克隆
+
+正式仓库为 [KaiserIIII/zhixu](https://github.com/KaiserIIII/zhixu)。首次部署先获取源码：
+
+```bash
+git clone https://github.com/KaiserIIII/zhixu.git
+cd zhixu
+```
+
+已有克隆只需更新远端地址，无需重新克隆或移动本地目录：
+
+```bash
+git remote set-url origin https://github.com/KaiserIIII/zhixu.git
+git fetch origin
+```
+
+旧仓库 `universal-knowledge-base` 的链接会自动重定向；同名分支继续保存最原始版本。仓库改名不改变数据库、上传文件、索引目录或 Docker 卷名称，已有部署沿用原存储配置。
+
 ## 运行环境
 
 本次离线 API 验证环境为 Windows AMD64、Python 3.13。`requirements-core.lock` 固定轻量服务依赖；安装 core 后可以启动账号、组织和管理接口。实际文档向量索引需要另装 `requirements-rag.lock`，并准备本地 Embedding 模型。后者固定直接依赖版本，其机器学习传递依赖仍由 pip 解析；请在部署平台冻结完整环境后再发布镜像。

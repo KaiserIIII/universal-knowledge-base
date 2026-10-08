@@ -1,6 +1,6 @@
 # Zhixu / 知序 architecture
 
-This is the durable architecture reference for **Zhixu · Enterprise Knowledge**, a free, open-source and self-hosted knowledge workspace. The repository slug `universal-knowledge-base` is retained only for URL compatibility. The service does not collect telemetry by default and has no external payment dependency.
+This is the durable architecture reference for **Zhixu · Enterprise Knowledge**, a free, open-source and self-hosted knowledge workspace. The canonical repository is [KaiserIIII/zhixu](https://github.com/KaiserIIII/zhixu); links to the former repository name redirect here. The service does not collect telemetry by default and has no external payment dependency.
 
 ## System flow
 
