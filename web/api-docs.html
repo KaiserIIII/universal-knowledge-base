@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title data-i18n="API Reference · 知序">API Reference · 知序</title>
+  <link rel="stylesheet" href="/web/styles.css">
+</head>
+<body>
+  <main style="max-width:1100px;margin:auto;padding:36px 22px">
+    <div class="row between wrap">
+      <a href="/" data-locale-link class="quiet" data-i18n="← 返回工作台">← 返回工作台</a>
+      <label class="language-switch"><span data-i18n="语言">语言</span><select id="languageControl" aria-label="Language"><option value="zh-CN">简体中文</option><option value="en">English</option></select></label>
+    </div>
+    <div class="section-heading" style="margin-top:24px"><div><div class="eyebrow">API REFERENCE</div><h1 data-i18n="连接你的客服系统与 Agent。">连接你的客服系统与 Agent。</h1><p class="description" data-i18n="此文档从当前服务的 OpenAPI 生成，覆盖实际部署的接口与参数。">此文档从当前服务的 OpenAPI 生成，覆盖实际部署的接口与参数。</p></div></div>
+    <section class="card">
+      <h2 data-i18n="认证与组织上下文">认证与组织上下文</h2>
+      <p class="muted" data-i18n="集成使用组织管理员创建的 Bearer API 密钥；受保护资源同时要求 X-Workspace-ID。密钥权限来自创建者当前组织角色，成员被移除或密钥撤销后失效。">集成使用组织管理员创建的 Bearer API 密钥；受保护资源同时要求 X-Workspace-ID。密钥权限来自创建者当前组织角色，成员被移除或密钥撤销后失效。</p>
+      <pre class="source-card preserve">Authorization: Bearer &lt;API_KEY&gt;
+X-Workspace-ID: &lt;ORGANIZATION_UUID&gt;</pre>
+      <p class="hint" data-i18n="浏览器工作台使用 HttpOnly 会话 Cookie；写操作还要求 X-CSRF-Token。查询其他组织资源会返回 404。示例参数和接口返回规则以下方真实 schema 为准。">浏览器工作台使用 HttpOnly 会话 Cookie；写操作还要求 X-CSRF-Token。查询其他组织资源会返回 404。示例参数和接口返回规则以下方真实 schema 为准。</p>
+      <a href="/openapi.json" class="quiet" target="_blank" rel="noopener" data-i18n="查看完整 OpenAPI JSON ↗">查看完整 OpenAPI JSON ↗</a>
+    </section>
+    <label style="margin:24px 0"><span data-i18n="搜索路径与功能">搜索路径与功能</span><input data-i18n-placeholder="例如：workflows、feedback、knowledge" id="apiSearch" placeholder="例如：workflows、feedback、knowledge"></label>
+    <div id="apiOperations"><p class="muted" data-i18n="正在读取接口定义…">正在读取接口定义…</p></div>
+  </main>
+  <script type="module" src="/web/api-docs.js"></script>
+</body>
+</html>
