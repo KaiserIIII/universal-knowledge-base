@@ -1,13 +1,51 @@
+name: knowledge-saas
+
 services:
+  app:
+    build:
+      context: .
+      target: rag
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////app/backend/app/data/saas/knowledge.db}
+      CHROMA_PERSIST_DIR: /app/backend/app/data/saas/chroma
+      UPLOAD_TEMP_DIR: /app/backend/app/data/saas/uploads
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set the public origin}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+      LLM_API_URL: ${LLM_API_URL:-https://api.deepseek.com/v1/chat/completions}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-chat}
+      MODEL_ALLOWED_HOSTS: ${MODEL_ALLOWED_HOSTS:-["api.openai.com","api.deepseek.com"]}
+      MODEL_ALLOWED_SECRET_REFS: ${MODEL_ALLOWED_SECRET_REFS:-["SUPPORT_MODEL_API_KEY"]}
+      MODEL_PRIVATE_HOSTS: ${MODEL_PRIVATE_HOSTS:-[]}
+      MODEL_ALLOW_HTTP: ${MODEL_ALLOW_HTTP:-false}
+      WORKFLOW_TIMEOUT_SECONDS: ${WORKFLOW_TIMEOUT_SECONDS:-180}
+      WORKFLOW_OUTPUT_TOKEN_BUDGET: ${WORKFLOW_OUTPUT_TOKEN_BUDGET:-16384}
+      WORKFLOW_LEASE_SECONDS: ${WORKFLOW_LEASE_SECONDS:-15}
+      SUPPORT_MODEL_API_KEY: ${SUPPORT_MODEL_API_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_TEAM_PRICE_ID: ${STRIPE_TEAM_PRICE_ID:-}
+      STRIPE_BUSINESS_PRICE_ID: ${STRIPE_BUSINESS_PRICE_ID:-}
+    volumes:
+      - kb_app_data:/app/backend/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   postgres:
-    image: postgres:16-alpine
-    container_name: enterprise-kb-postgres
+    profiles: ["postgres"]
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     environment:
       POSTGRES_DB: enterprise_kb
       POSTGRES_USER: enterprise_kb
-      POSTGRES_PASSWORD: change-me-before-production
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     volumes:
       - kb_pg_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -18,4 +56,5 @@ services:
       retries: 10
 
 volumes:
+  kb_app_data:
   kb_pg_data:

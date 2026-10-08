@@ -1,0 +1,157 @@
+[
+  {
+    "package": "annotated-doc",
+    "repository": "https://github.com/fastapi/annotated-doc",
+    "release_tag": "0.0.4",
+    "commit": "a6b2d3869f24c9c04cd7c024e59ccec3e5422a56",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "0.0.4"
+  },
+  {
+    "package": "annotated-types",
+    "repository": "https://github.com/annotated-types/annotated-types",
+    "release_tag": "v0.8.0",
+    "commit": "9eb96680138269811a39d838d720abc3dce33954",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "0.8.0"
+  },
+  {
+    "package": "anyio",
+    "repository": "https://github.com/agronholm/anyio",
+    "release_tag": "4.14.2",
+    "commit": "c384f99687c64c59ed8a11c3a0f11a2d57daff71",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "4.14.2"
+  },
+  {
+    "package": "certifi",
+    "repository": "https://github.com/certifi/python-certifi",
+    "release_tag": "2026.07.22",
+    "commit": "f4bc676bc101fe2235846e37044e8c693d6cbaf4",
+    "license": "MPL-2.0",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "2026.7.22"
+  },
+  {
+    "package": "click",
+    "repository": "https://github.com/pallets/click",
+    "release_tag": "8.4.2",
+    "commit": "b2e30a175449cfda909ee4fbf4a29a6a071cad53",
+    "license": "BSD-3-Clause",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "8.4.2"
+  },
+  {
+    "package": "colorama",
+    "repository": "https://github.com/tartley/colorama",
+    "release_tag": "0.4.6",
+    "commit": "3de9f013df4b470069d03d250224062e8cf15c49",
+    "license": "BSD-3-Clause",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "0.4.6"
+  },
+  {
+    "package": "greenlet",
+    "repository": "https://github.com/python-greenlet/greenlet",
+    "release_tag": "3.5.4",
+    "commit": "384be8821a934fbb835e369dda2b9b72107e80be",
+    "license": "MIT AND PSF-2.0",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "3.5.4"
+  },
+  {
+    "package": "h11",
+    "repository": "https://github.com/python-hyper/h11",
+    "release_tag": "v0.16.0",
+    "commit": "1c5b07581f058886c8bdd87adababd7d959dc7ca",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "0.16.0"
+  },
+  {
+    "package": "httpcore",
+    "repository": "https://github.com/encode/httpcore",
+    "release_tag": "1.0.9",
+    "commit": "98209758cc14e1a5f966fe1dfdc1064b94055d8c",
+    "license": "BSD-3-Clause",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "1.0.9"
+  },
+  {
+    "package": "idna",
+    "repository": "https://github.com/kjd/idna",
+    "release_tag": "v3.18",
+    "commit": "f39ea903ba49eb5a0b2c6723c9a929b41ed4a0f1",
+    "license": "BSD-3-Clause",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "3.18"
+  },
+  {
+    "package": "pydantic-core",
+    "repository": "https://github.com/pydantic/pydantic",
+    "source_path": "pydantic-core",
+    "release_tag": "v2.13.4",
+    "commit": "cf67d4b3193c3fe43ede18612ed62785eee11382",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Verified pydantic-core/Cargo.toml at the Pydantic release commit declares version 2.46.4; upstream moved core into its monorepo.",
+    "installed_version": "2.46.4"
+  },
+  {
+    "package": "starlette",
+    "repository": "https://github.com/Kludex/starlette",
+    "release_tag": "1.3.1",
+    "commit": "8ebffd0678570ddd5d5bb11c6f3c3c7fd4682ab9",
+    "license": "BSD-3-Clause",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "1.3.1"
+  },
+  {
+    "package": "typing-extensions",
+    "repository": "https://github.com/python/typing_extensions",
+    "release_tag": "4.16.0",
+    "commit": "f29cd28d8ed7642cafb1d18daf5aa41be6a5c0aa",
+    "license": "PSF-2.0",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "4.16.0"
+  },
+  {
+    "package": "typing-inspection",
+    "repository": "https://github.com/pydantic/typing-inspection",
+    "release_tag": "v0.4.2",
+    "commit": "8db011350942f33ac4b5d7db60d4d9ea83ab480f",
+    "license": "MIT",
+    "recorded_at": "2026-10-07",
+    "installation_time": "Unknown: inspected existing environment; no installation performed.",
+    "review": "Inspected upstream release ref and installed distribution metadata.",
+    "installed_version": "0.4.2"
+  }
+]
