@@ -1,3 +1,4 @@
+import {t,html,staticHTML,localizePage,bindLanguageControl,localeURL,getLocale} from './i18n.js';
 export class APIError extends Error {
   constructor(message, status) { super(message); this.status=status; }
 }
@@ -36,9 +37,9 @@ export class Client {
     if(json!==undefined) { headers.set('Content-Type','application/json'); init.body=JSON.stringify(json); }
     const response=await this.fetcher(path,{...init,method,headers,credentials:'same-origin'});
     if(!response.ok) {
-      let message=`请求失败 (${response.status})`;
-      try {const data=await response.json();const detail=data.detail;if(detail?.code==='quota_exceeded')message=`${({members:'团队成员',knowledge_bases:'知识库',documents:'文档',monthly_answers:'本月问答'})[detail.resource]||detail.resource}已达到套餐上限（${detail.limit}），请清理资源或调整订阅`;else if(Array.isArray(detail))message=detail.map(item=>`${(item.loc||[]).filter(part=>part!=='body').join('.')}: ${item.msg}`).join('；');else message=typeof detail==='string'?detail:JSON.stringify(detail||data.message||message);} catch {}
-      throw new APIError(friendlyErrors[message]||message,response.status);
+      let message=html`请求失败 (${response.status})`;
+      try {const data=await response.json();const detail=data.detail;if(detail?.code==='quota_exceeded')message=html`${({members:t('团队成员'),knowledge_bases:t('知识库'),documents:t('文档'),monthly_answers:t('本月问答')})[detail.resource]||detail.resource}已达到套餐上限（${detail.limit}），请清理资源或调整订阅`;else if(Array.isArray(detail))message=detail.map(item=>`${(item.loc||[]).filter(part=>part!=='body').join('.')}: ${item.msg}`).join('；');else message=typeof detail==='string'?detail:JSON.stringify(detail||data.message||message);} catch {}
+      throw new APIError(t(friendlyErrors[message])||message,response.status);
     }
     return response;
   }
@@ -48,7 +49,7 @@ export class Client {
   }
   async *stream(path,options={}) {
     const response=await this.response(path,options);
-    if(!response.body) throw new APIError('服务器没有返回数据流',502);
+    if(!response.body) throw new APIError(t('服务器没有返回数据流'),502);
     const reader=response.body.getReader();
     async function* source() { try {while(true) {const {value,done}=await reader.read();if(done)return;yield value;}} finally {await reader.cancel().catch(()=>{});reader.releaseLock();} }
     yield* readSSE(source());
@@ -61,11 +62,11 @@ export async function* readSSE(chunks) {
     const data=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');
     if(!data)return null;
     if(data.trim()==='[DONE]')return 'done';
-    try {return JSON.parse(data);} catch {throw new APIError('服务器返回了无法解析的流事件',502);}
+    try {return JSON.parse(data);} catch {throw new APIError(t('服务器返回了无法解析的流事件'),502);}
   };
   for await (const chunk of chunks) {
     buffer+=typeof chunk==='string'?chunk:decoder.decode(chunk,{stream:true});
-    if(buffer.length>2_000_000)throw new APIError('数据流事件超过大小限制',502);
+    if(buffer.length>2_000_000)throw new APIError(t('数据流事件超过大小限制'),502);
     let match;
     while((match=/\r?\n\r?\n/.exec(buffer))) {
       const frame=buffer.slice(0,match.index); buffer=buffer.slice(match.index+match[0].length);

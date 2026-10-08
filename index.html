@@ -4,25 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark">
-  <meta name="description" content="面向企业与客服团队的知识工作台：来源可查、检索可测、模块可编排。">
+  <meta name="description" data-i18n-content="面向企业与客服团队的知识工作台：来源可查、检索可测、模块可编排。" content="面向企业与客服团队的知识工作台：来源可查、检索可测、模块可编排。">
   <title>知序 · Enterprise Knowledge</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310182a'/%3E%3Cpath d='m15 19 17-8 17 8v26l-17 8-17-8Zm0 0 17 9 17-9M32 28v25' stroke='%2369e5c1' stroke-width='4' fill='none'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/web/styles.css">
   <script type="module" src="/web/app.js"></script>
 </head>
 <body>
-  <div id="boot" class="boot"><div class="brand-mark">知</div><p>正在连接工作台…</p></div>
+  <div id="boot" class="boot"><div class="brand-mark">知</div><p data-i18n="正在连接工作台…">正在连接工作台…</p></div>
   <div id="auth" class="auth hidden"></div>
   <div id="shell" class="shell hidden">
     <aside id="sidebar" class="sidebar">
       <a class="brand" href="#overview"><div class="brand-mark">知</div><span><strong>知序</strong><small>ENTERPRISE KNOWLEDGE</small></span></a>
-      <div class="workspace-switch"><label for="workspace">工作空间</label><select id="workspace" aria-label="切换组织"></select><span id="roleBadge" class="role-badge"></span></div>
-      <div class="nav-label">工作台</div>
-      <nav id="navigation" aria-label="主导航"></nav>
-      <div class="sidebar-bottom"><div class="live-status"><span></span> 本地优先 · 证据驱动</div><button id="accountButton" class="account"><span class="avatar" id="avatar">K</span><span><strong id="accountName"></strong><small id="accountEmail"></small></span><span class="muted">↗</span></button></div>
+      <div class="workspace-switch"><label for="workspace" data-i18n="工作空间">工作空间</label><select id="workspace" aria-label="切换组织" data-i18n-aria-label="切换组织"></select><span id="roleBadge" class="role-badge"></span></div>
+      <div class="nav-label" data-i18n="工作台">工作台</div>
+      <nav id="navigation" aria-label="主导航" data-i18n-aria-label="主导航"></nav>
+      <div class="sidebar-bottom"><div class="live-status"><span></span> <span data-i18n="本地优先 · 证据驱动">本地优先 · 证据驱动</span></div><button id="accountButton" class="account"><span class="avatar" id="avatar">K</span><span><strong id="accountName"></strong><small id="accountEmail"></small></span><span class="muted">↗</span></button></div>
     </aside>
     <div class="main-shell">
-      <header class="topbar"><button id="mobileMenu" class="icon-btn mobile-only" aria-label="打开导航">☰</button><div class="breadcrumb"><span id="pageSection">工作台</span><span>/</span><strong id="pageTitle">概览</strong></div><div class="top-actions"><span class="environment"><span></span> 私有工作空间</span><a href="/docs" class="quiet small" target="_blank" rel="noopener">API 文档 ↗</a><button id="logoutButton" class="quiet small">退出</button></div></header>
+      <header class="topbar"><button id="mobileMenu" class="icon-btn mobile-only" aria-label="打开导航" data-i18n-aria-label="打开导航">☰</button><div class="breadcrumb"><span id="pageSection" data-i18n="工作台">工作台</span><span>/</span><strong id="pageTitle">概览</strong></div><div class="top-actions"><span class="environment"><span></span> <span data-i18n="私有工作空间">私有工作空间</span></span><label class="language-switch"><span data-i18n="语言">语言</span><select id="languageControl" aria-label="Language"><option value="zh-CN">简体中文</option><option value="en">English</option></select></label><a href="/docs" data-locale-link class="quiet small" target="_blank" rel="noopener" data-i18n="API 文档 ↗">API 文档 ↗</a><button id="logoutButton" class="quiet small" data-i18n="退出">退出</button></div></header>
       <main id="view" tabindex="-1"></main>
     </div>
   </div>

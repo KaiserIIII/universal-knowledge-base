@@ -1,6 +1,5 @@
 # Local configuration and secrets
 backend/.env
-/.env
 backend/app/data/*
 !backend/app/data/.gitkeep
 
@@ -26,10 +25,3 @@ backend/build/
 .idea/
 .DS_Store
 Thumbs.db
-
-# Local development and verification state
-.superpowers/
-.coverage
-coverage-results/
-test-results/
-.venv/

@@ -20,3 +20,6 @@
 @media(max-width:1400px){.chat-layout{grid-template-columns:180px minmax(300px,1fr)}.evidence-panel{grid-column:1/-1;max-height:460px}#chatSources{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}
 @media(max-width:800px){.chat-layout{grid-template-columns:1fr}.conversation-list{max-height:180px}#conversationItems{display:flex;gap:10px;overflow:auto}.conversation-item{min-width:155px;width:155px;flex-shrink:0}.chat-messages{height:400px}#chatSources{grid-template-columns:1fr}.chat-config{display:block}.chat-config>label{width:100%}.chat-center form>.row>small{display:none}.chat-center form>.row{justify-content:flex-end}}
 .hint:empty{display:none}
+/* language control */
+.language-switch{display:flex;align-items:center;gap:6px;margin:0;font-size:10px;color:#8397ac}.language-switch select{width:auto;min-width:84px;margin:0;padding:6px 7px;font-size:10px}
+.language-switch span,.environment{white-space:nowrap}

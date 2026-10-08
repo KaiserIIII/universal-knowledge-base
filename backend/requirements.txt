@@ -1,3 +1,37 @@
-# Full local RAG environment; direct releases are pinned and audited.
-# For the lightweight API-only environment use requirements-core.lock.
--r requirements-rag.lock
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]>=0.30.0
+sqlalchemy[asyncio]>=2.0.30
+aiosqlite>=0.20.0
+asyncpg>=0.29.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+httpx>=0.27.0
+python-multipart>=0.0.9
+aiofiles>=24.1.0
+
+# Embedding (本地加载)
+sentence-transformers>=3.0.0
+
+# Reranker (本地加载, 可选)
+FlagEmbedding>=1.2.0
+
+# 中文分词 (BM25)
+jieba>=0.42.0
+
+# 向量数据库 (嵌入式)
+chromadb>=0.5.0
+
+# 文档解析 (轻量)
+pypdf>=4.0.0
+python-docx>=1.1.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# 文本切分
+langchain-text-splitters>=0.2.0
+
+# 重系统解析 (可选, 功能更强但安装包大)
+unstructured>=0.14.0
+
+# 工具
+python-dotenv>=1.0.0

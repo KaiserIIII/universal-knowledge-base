@@ -1,6 +1,0 @@
-{
-  "name": "enterprise-knowledge-workbench",
-  "private": true,
-  "type": "module",
-  "scripts": {"test": "node --test tests/web/*.test.mjs"}
-}

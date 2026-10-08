@@ -1,9 +1,0 @@
-{
-  "recorded_at": "2026-10-07",
-  "environment": "Windows AMD64 / Python 3.13 / isolated .venv",
-  "command": "python -m pip install -r backend/requirements-core.lock",
-  "installed_runtime_packages": 24,
-  "dependency_consistency": "python -m pip check: No broken requirements found",
-  "provenance": ["core-audit.json", "transitive-audit.json"],
-  "notes": "Optional local RAG dependencies and container images were not installed in this reproduction. API tests use temporary SQLite and injected synthetic adapters."
-}
