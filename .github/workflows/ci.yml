@@ -1,4 +1,4 @@
-name: SaaS verification
+name: Zhixu verification
 on:
   push:
   pull_request:

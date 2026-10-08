@@ -1,4 +1,4 @@
-"""Isolated async API fixture; never reads checkout runtime data or .env."""
+"""Isolated async API fixture; never reads deployment runtime data or .env."""
 import sys
 import tempfile
 import unittest
@@ -50,11 +50,6 @@ class FakeLLM:
         yield self.content
 
 
-class FakePayment:
-    def __init__(self):
-        self.calls = []
-
-
 class ApiTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self._asyncioRunner.get_loop().slow_callback_duration = 1.0
@@ -77,8 +72,7 @@ class ApiTestCase(unittest.IsolatedAsyncioTestCase):
         )
         self.retriever = FakeRetriever()
         self.llm = FakeLLM()
-        self.payment = FakePayment()
-        self.app = create_app(self.settings, self.retriever, self.llm, self.payment)
+        self.app = create_app(self.settings, self.retriever, self.llm)
         self.lifespan = self.app.router.lifespan_context(self.app)
         await self.lifespan.__aenter__()
         self.addAsyncCleanup(self.lifespan.__aexit__, None, None, None)
@@ -113,27 +107,7 @@ class ApiTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 201, response.text)
         return response.json()
 
-    async def seed_subscription(self, plan="team"):
-        """Explicit paid fixture for identity tests that need multiple members."""
-        from datetime import timedelta
-        from app.saas.billing_models import Subscription
-        from app.saas.models import utcnow
-        price = "price_" + plan + "_test"
-        setattr(self.settings, "stripe_" + plan + "_price_id", price)
-        async with self.app.state.session_factory() as db:
-            row = await db.get(Subscription, self.workspace_id)
-            if row is None:
-                row = Subscription(workspace_id=self.workspace_id, customer_id="cus_fixture_" + self.workspace_id)
-                db.add(row)
-            row.subscription_id = "sub_fixture_" + self.workspace_id
-            row.plan, row.price_id, row.status = plan, price, "active"
-            row.current_period_start = utcnow() - timedelta(days=1)
-            row.current_period_end = utcnow() + timedelta(days=30)
-            await db.commit()
-
-    async def join(self, email, role="viewer", *, paid_fixture=False):
-        if paid_fixture:
-            await self.seed_subscription("team")
+    async def join(self, email, role="viewer"):
         invitation = await self.invite(email, role)
         client = await self.new_client()
         user = await self.register_with(client, email)

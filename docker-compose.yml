@@ -10,6 +10,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////app/backend/app/data/saas/knowledge.db}
       CHROMA_PERSIST_DIR: /app/backend/app/data/saas/chroma
+      ANONYMIZED_TELEMETRY: "false"
       UPLOAD_TEMP_DIR: /app/backend/app/data/saas/uploads
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set the public origin}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
@@ -25,10 +26,6 @@ services:
       WORKFLOW_OUTPUT_TOKEN_BUDGET: ${WORKFLOW_OUTPUT_TOKEN_BUDGET:-16384}
       WORKFLOW_LEASE_SECONDS: ${WORKFLOW_LEASE_SECONDS:-15}
       SUPPORT_MODEL_API_KEY: ${SUPPORT_MODEL_API_KEY:-}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      STRIPE_TEAM_PRICE_ID: ${STRIPE_TEAM_PRICE_ID:-}
-      STRIPE_BUSINESS_PRICE_ID: ${STRIPE_BUSINESS_PRICE_ID:-}
     volumes:
       - kb_app_data:/app/backend/app/data
     restart: unless-stopped

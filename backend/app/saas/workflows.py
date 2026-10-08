@@ -9,6 +9,7 @@ from .model_profiles import load_profile
 from .models import utcnow
 from .retrieval import validate_kb_ids
 from .workflow_models import Workflow, WorkflowRun, WorkflowVersion
+from .file_evidence import validate_files
 
 router = APIRouter(prefix='/api/v1/workflows')
 
@@ -28,6 +29,13 @@ class RetrievalConfig(Strict):
 
 class FilterConfig(Strict):
     metadata: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=20)
+
+
+class FilesConfig(Strict):
+    kb_ids: list[str] = Field(default_factory=list, max_length=20)
+    doc_ids: list[str] = Field(default_factory=list, max_length=50)
+    top_k: int = Field(default=12, ge=1, le=50)
+    context_chars: int = Field(default=16000, ge=1000, le=50000)
 
 
 class DedupConfig(Strict):
@@ -62,10 +70,10 @@ class MergeConfig(Strict):
     max_tokens: int = Field(default=1024, ge=1, le=8192)
 
 
-CONFIGS = {'input': Strict, 'retrieval': RetrievalConfig, 'filter': FilterConfig, 'deduplicate': DedupConfig,
+CONFIGS = {'input': Strict, 'retrieval': RetrievalConfig, 'files': FilesConfig, 'filter': FilterConfig, 'deduplicate': DedupConfig,
            'rerank': RerankConfig, 'evidence': EvidenceConfig, 'prompt': PromptConfig, 'model': ModelConfig,
            'merge': MergeConfig, 'output': Strict}
-TYPES = {'input': ('query', set()), 'retrieval': ('evidence', {'query'}),
+TYPES = {'input': ('query', set()), 'retrieval': ('evidence', {'query'}), 'files': ('evidence', {'query'}),
          'filter': ('evidence', {'evidence'}), 'deduplicate': ('evidence', {'evidence'}),
          'rerank': ('evidence', {'evidence'}), 'evidence': ('evidence', {'evidence'}),
          'prompt': ('prompt', {'query', 'evidence'}), 'model': ('answer', {'prompt', 'evidence'}),
@@ -117,6 +125,8 @@ async def validate_graph(db, access, raw, settings, *, complete=True, resolve=Fa
         config = node['config']
         if config.get('kb_ids'):
             await validate_kb_ids(db, access, config['kb_ids'])
+        if node['type'] == 'files':
+            await validate_files(db, access, config['kb_ids'], config['doc_ids'], complete=complete)
         if config.get('profile_id'):
             profiles[config['profile_id']] = await load_profile(db, access, config['profile_id'], settings, resolve=resolve)
     if not complete:

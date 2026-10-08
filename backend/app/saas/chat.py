@@ -15,7 +15,6 @@ from .conversations import scoped_conversation
 from .dependencies import get_access, get_db, lock_workspace
 from .llm import LLMNotConfigured, OutputLimitError, UpstreamProtocolError
 from .models import new_id, utcnow
-from .quotas import finish_answer, reserve_answer
 from .retrieval import scoped_search, validate_kb_ids
 
 router = APIRouter(prefix='/api/v1/chat')
@@ -188,7 +187,6 @@ class PreparedChat:
     workspace_id: str
     conversation_id: str
     message_id: str
-    reservation_id: str
     request: ChatRequest
     started: float
     sources: list = field(default_factory=list)
@@ -225,13 +223,12 @@ class ChatService:
             Message.status == 'completed').order_by(Message.position.desc()).limit(self.settings.chat_history_messages))).all()
         history = [{'role': row.role, 'content': row.content} for row in reversed(history_rows)]
         position = (await db.scalar(select(func.max(Message.position)).where(Message.conversation_id == conversation.id)) or 0) + 1
-        reservation = await reserve_answer(db, access.workspace_id)
         user = Message(conversation_id=conversation.id, position=position, role='user', content=body.query, status='completed')
         answer = Message(id=new_id(), conversation_id=conversation.id, position=position + 1, role='assistant',
-                         query=body.query, status='running', reservation_id=reservation.id)
+                         query=body.query, status='running')
         db.add_all([user, answer])
         conversation.updated_at = utcnow()
-        prepared = PreparedChat(access.workspace_id, conversation.id, answer.id, reservation.id, body, started)
+        prepared = PreparedChat(access.workspace_id, conversation.id, answer.id, body, started)
         prepared.profile = profile
         await db.commit()  # no organization lock is held during upstream calls
         try:
@@ -270,7 +267,6 @@ class ChatService:
                 conversation = await db.get(Conversation, prepared.conversation_id)
                 conversation.updated_at = utcnow()
             # Retry/idempotence must respect the persisted final status.
-            await finish_answer(db, prepared.workspace_id, prepared.reservation_id, succeeded=message.status == 'completed')
             await db.commit()
             return {'conversation_id': message.conversation_id, 'message_id': message.id,
                     'status': message.status, 'content': message.content, 'sources': message.sources,
@@ -363,21 +359,6 @@ class ChatService:
 
 def sse(value):
     return 'data: ' + json.dumps(value, ensure_ascii=False) + '\n\n'
-
-
-async def recover_failed_answers(session_factory):
-    """Only persisted terminal failures can be released; active/crashed runs are untouched."""
-    from .billing_models import AnswerReservation
-    async with session_factory() as db:
-        rows = (await db.execute(select(Conversation.workspace_id, Message.reservation_id).join(Message,
-            Message.conversation_id == Conversation.id).join(AnswerReservation, AnswerReservation.id == Message.reservation_id)
-            .where(Message.status.in_(['error', 'canceled', 'insufficient_evidence']), AnswerReservation.status == 'reserved'))).all()
-    for workspace_id, reservation_id in rows:
-        async with session_factory() as db:
-            if db.bind.dialect.name == 'sqlite':
-                await db.execute(text('BEGIN IMMEDIATE'))
-            await finish_answer(db, workspace_id, reservation_id, succeeded=False)
-            await db.commit()
 
 
 @router.post('/completions/sync')

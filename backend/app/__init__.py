@@ -1,7 +1,7 @@
 """
-通用知识库 — 后端微服务
+知序知识库 — 后端微服务
 """
-__version__ = "2.0.0"
+__version__ = "3.1.0"
 """Application package with compatibility for the legacy script entry point."""
 
 import sys

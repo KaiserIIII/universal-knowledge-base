@@ -2,45 +2,55 @@
 
 [简体中文](README_zh.md)
 
-A self-hosted knowledge workspace for internal teams and customer support. Connect documents, retrieval strategies and OpenAI-compatible models, then inspect the evidence behind each answer and use team feedback to find missing knowledge.
+Zhixu is a free, open-source, self-hosted knowledge workspace for internal teams and customer-support operations. It keeps documents, retrieval, model connections, visual workflows, evidence citations, feedback and evaluation inside the deployment you control.
 
-**Product identity:** **Zhixu · Enterprise Knowledge**. The GitHub repository slug remains `universal-knowledge-base` for link continuity; the product name shown to customers is Zhixu.
+The product brand is **Zhixu · Enterprise Knowledge**. The repository slug `universal-knowledge-base` is retained for link compatibility.
 
-## What you can build
+## Capabilities
 
-- **A knowledge service for multiple organizations.** Separate organization data, manage owner/admin/editor/viewer roles, issue revocable API keys and track plan usage.
-- **A configurable answer pipeline.** Compose input, multi-KB retrieval, filtering, deduplication, reranking, evidence checks, prompts, model branches, merging and output on a drag-and-drop canvas. Save drafts, publish immutable versions, roll back and inspect node traces.
-- **A support operations loop.** Import documents with durable retryable jobs, review grounded conversations and sources, record feedback, export conversations and investigate insufficient-evidence queries.
-- **A retrieval comparison workspace.** Compare up to three configurations on labeled questions, with document-level precision, recall, MRR, Hit Rate and nDCG. Unlabeled questions show no invented quality score; answer faithfulness requires review.
+- Multi-tenant organizations with owner, admin, editor and viewer roles.
+- Multiple knowledge bases with bounded document parsing and durable import jobs.
+- Selectable file parser modules, Chinese encoding support, structured tables and SHA-256 receipts; a file-evidence workflow node reads selected parsed documents.
+- Hybrid retrieval, optional reranking, evidence gates and source-bound citations.
+- Multiple OpenAI-compatible model connections and parallel or synthesis workflows.
+- A drag-and-drop workflow editor with drafts, immutable versions, rollback and run traces.
+- Conversation feedback, knowledge-gap insights, retrieval evaluation and export.
+- Chinese and English management interfaces with persisted language selection.
 
-Model profiles expose connection settings, prompts and generation parameters through administrator-controlled environment references. Embedding identity remains a deployment setting so that an organization cannot silently change the dimensions of the shared index.
+The default runtime has no member, knowledge-base, document or answer-count limits. It does not call payment services and does not collect telemetry by default. Operators can apply local infrastructure controls such as reverse-proxy limits, storage policies or process-level budgets without adding product dependencies.
 
-![Visual workflow management with model settings and execution traces](docs/images/workflow.png)
+![File evidence workflow with visible connections and execution traces](docs/images/workflow.jpg)
 
-The screenshot uses synthetic documents and model adapters. See [verification evidence and limits](docs/verification.md).
+The screenshot uses synthetic documents and local adapters. See [verification evidence](docs/verification.md).
 
 ## Architecture
 
-The architecture diagram is also available as a standalone [architecture reference](docs/architecture.md), with a plain-text fallback for GitHub views that do not render Mermaid.
+The architecture diagram is available below and in the standalone [architecture reference](docs/architecture.md), which also includes a plain-text fallback for GitHub views that do not render Mermaid.
 
 ```mermaid
 flowchart LR
-    UI[Local browser modules] --> API[FastAPI SaaS factory]
-    API --> Identity[Sessions · organizations · roles]
+    Browser[Browser management workspace] --> API[FastAPI self-hosted API]
+    API --> Auth[Sessions · organizations · roles]
     API --> SQL[(SQLite / PostgreSQL)]
     API --> Jobs[Leased ingestion jobs]
-    Jobs --> Index[Chroma · BM25 · local embeddings]
-    API --> Graph[Versioned graph execution]
-    Graph --> Index
-    Graph --> Models[Allowlisted model connections]
-    API --> Billing[Quotas · signed Stripe events]
+    Jobs --> Parse[Bounded document parsing]
+    Parse --> Chunks[(Receipt-bound SQL chunks)]
+    Parse --> Index[Chroma · BM25 · local embeddings]
+    API --> Graph[Versioned visual workflow graph]
+    Graph --> Files[Selected file evidence]
+    Files --> Chunks
+    Graph --> Retrieve[Multi-KB retrieval · filters · reranking]
+    Retrieve --> Index
+    Graph --> Models[Administrator-approved model connections]
+    Graph --> Evidence[Evidence gate · citation mapping]
+    API --> Ops[Feedback · insights · retrieval evaluation]
 ```
 
-SQL membership and document records determine visible resources. Retrieval results are checked and reconstructed against SQL before use. Core API startup does not load heavyweight models. The browser uses local JavaScript modules and CSS, with no build step or script CDN.
+Every organization-scoped query is checked through SQL membership. Retrieval results are rehydrated and checked before they become model context. Core startup does not load heavyweight models, and no external service is required for the management API.
 
 ## Run locally
 
-Python 3.13 is the verified core API environment. On Windows:
+Use Python 3.13, verified locally on Windows:
 
 ```powershell
 python -m venv .venv
@@ -49,41 +59,15 @@ Copy-Item backend/.env.template backend/.env
 python start.py
 ```
 
-On Linux, use `.venv/bin/python` for environment commands. Open [localhost:8000](http://localhost:8000) and create the first organization. The self-hosted API reference is at `/docs`. `start.bat` runs the same foreground launcher; Ctrl+C stops the server.
+On Linux use `.venv/bin/python`. Open <http://localhost:8000>, create the first organization, and configure model connections from the management UI. API documentation is available at `/docs`.
 
-For a lightweight API-only environment, install `backend/requirements-core.lock`. Local embedding/index/parser capabilities require the optional RAG stack and model cache; model weights may download on first use. The RAG file pins direct releases, while its ML transitive dependencies still require a platform-specific freeze before production delivery. Source/license/commit records are in [docs/dependencies](docs/dependencies).
+For an API-only deployment, install `backend/requirements-core.lock`. Local parsing, embeddings and indexes use the optional RAG lock file. Credentials stay in the deployment environment and are referenced by administrator-approved model profiles.
 
-Configure the default model in `backend/.env`, or add a model profile in the management UI after allowing its host and environment reference:
+See [deployment and migration](docs/deployment.md), [parser modules](docs/parsing.md) and [workflow guide](docs/workflows.md). The RAG lock pins direct dependencies; freeze its platform-specific transitive dependencies before building a deployment image. Offline installations should pre-cache embedding weights and use a local model endpoint.
 
-```dotenv
-LLM_API_URL=https://api.deepseek.com/v1/chat/completions
-LLM_API_KEY=
-LLM_MODEL=deepseek-chat
-MODEL_ALLOWED_HOSTS=["api.openai.com","api.deepseek.com"]
-MODEL_ALLOWED_SECRET_REFS=["SUPPORT_MODEL_API_KEY"]
-```
+## Data and compatibility
 
-The default model reads `LLM_API_KEY` from `backend/.env`. Profile references such as `SUPPORT_MODEL_API_KEY` must be injected into the service process environment; writing them only in that file does not export them. Compose explicitly passes the value from its root `.env`. See [deployment](docs/deployment.md) for independent credentials. Strict evidence mode skips the model when no evidence is retrieved. Retrieved context is sent to the configured provider when a model runs; choose the provider and network policy to match your data requirements.
-
-See the [visual workflow guide](docs/workflows.md) for multiple knowledge bases, model branches and published versions.
-
-## Knowledge and plans
-
-Text, Markdown, CSV, JSON, HTML, DOCX, XLSX and PPTX have local text extraction paths. PDFs require the optional text parser; image-only PDF OCR is not included. Office parsing is bounded and text-only, and spreadsheet formulas use cached values. Failed imports retain sources for retry or deletion.
-
-| Plan | Members | Knowledge bases | Documents | Completed answers / UTC month |
-| --- | ---: | ---: | ---: | ---: |
-| Free | 1 | 3 | 50 | 100 |
-| Team | 10 | 20 | 1,000 | 5,000 |
-| Business | 50 | 100 | 10,000 | 50,000 |
-
-Answers reserve quota before upstream work. Known failed/canceled operations release it; successful answers finalize it. A process crash can leave a running answer's reservation held for operator reconciliation. Stripe checkout and portal require deployment credentials and price IDs. Browser redirects do not grant a plan: signed events and authoritative subscription state govern entitlements. Prices are configured by the deployer.
-
-## Deployment and upgrades
-
-See [deployment and migration](docs/deployment.md) for Docker Compose, PostgreSQL, HTTPS cookies, backup and explicit legacy workspace claims. New registrations never automatically obtain old workspaces. SQLite is suitable for a single instance; PostgreSQL and shared-index concurrency require deployment validation. Clustered exactly-once index writes are not promised.
-
-The scope does not include SSO/SCIM, a tenant-managed secret vault, arbitrary code execution nodes, OCR or automatic payment reconciliation between multiple completed subscriptions. These require additional integration work before they can be offered as product capabilities.
+SQLite is suitable for a single instance; PostgreSQL is available for shared deployments. Startup preserves existing records and adds parser settings. Historical accounting tables and columns remain, while the workflow reference's obsolete required constraint is removed transactionally. Existing workspaces and knowledge bases retain their IDs. Back up SQL, source files and indexes together before upgrading; see the deployment guide for explicit ownership migration from the original release.
 
 ## Verification
 
@@ -94,17 +78,8 @@ python -m pip check
 node --test tests/web/*.test.mjs
 ```
 
-The API suite uses temporary SQLite and synthetic retriever, model and payment adapters. It checks authentication, tenant boundaries, quotas, import recovery and failure paths. Real PostgreSQL, Chroma/model execution, Docker runtime and Stripe integration need deployment smoke tests. Interface correctness does not establish retrieval quality or answer faithfulness on your documents.
+The tests use temporary SQLite databases and synthetic retriever/model adapters. They cover tenant isolation, roles, imports, conversations, citations, feedback, evaluation, workflow execution, cancellation, recovery and public file boundaries.
 
-## Code map
+## Contributing and license
 
-| Path | Responsibility |
-| --- | --- |
-| `backend/app/saas/` | Scoped identity, billing, knowledge, conversations, evaluation and workflow services |
-| `backend/app/rag_engine.py` | Existing local parsing, embedding, index and hybrid retrieval |
-| `backend/app/main.py` | Deployable app entrypoint and local UI assets |
-| `web/` | Management workspace and visual graph editor |
-| `tests/` | Offline API and browser-module behavior tests |
-| `backend/.env.template` | Deployment configuration reference |
-
-No project-wide license is currently specified.
+Contributions are welcome through issues and focused pull requests. See [contribution guidance](CONTRIBUTING.md). The project is licensed under [Apache-2.0](LICENSE).

@@ -4,7 +4,9 @@ export class APIError extends Error {
 }
 
 const friendlyErrors={
-  'Billing is not configured':'支付尚未配置，请联系部署管理员。',
+  'Selected parser does not support this file type':'所选解析模块不支持此文件格式。',
+  'Select knowledge bases and ready documents':'请选择知识库和已解析完成的文件。',
+  'Document parsing is not complete':'文件尚未解析完成，请等待导入任务完成。',
   'Authentication required':'请登录后继续；会话可能已经过期。',
   'CSRF token required':'会话校验失败，请刷新页面后重试。',
   'Resource not found':'资源不存在，或当前组织没有访问权限。',
@@ -38,7 +40,7 @@ export class Client {
     const response=await this.fetcher(path,{...init,method,headers,credentials:'same-origin'});
     if(!response.ok) {
       let message=html`请求失败 (${response.status})`;
-      try {const data=await response.json();const detail=data.detail;if(detail?.code==='quota_exceeded')message=html`${({members:t('团队成员'),knowledge_bases:t('知识库'),documents:t('文档'),monthly_answers:t('本月问答')})[detail.resource]||detail.resource}已达到套餐上限（${detail.limit}），请清理资源或调整订阅`;else if(Array.isArray(detail))message=detail.map(item=>`${(item.loc||[]).filter(part=>part!=='body').join('.')}: ${item.msg}`).join('；');else message=typeof detail==='string'?detail:JSON.stringify(detail||data.message||message);} catch {}
+      try {const data=await response.json();const detail=data.detail;if(Array.isArray(detail))message=detail.map(item=>`${(item.loc||[]).filter(part=>part!=='body').join('.')}: ${item.msg}`).join('；');else message=typeof detail==='string'?detail:JSON.stringify(detail||data.message||message);} catch {}
       throw new APIError(t(friendlyErrors[message])||message,response.status);
     }
     return response;

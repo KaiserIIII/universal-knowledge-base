@@ -1,46 +1,56 @@
-# 知序 · Enterprise Knowledge
+# 知序
 
 [English](README.md)
 
-面向企业内部团队与客服团队的自托管知识工作空间。连接资料、检索策略和 OpenAI 兼容模型，核查每个回答的依据，再通过团队反馈发现缺失的知识。
+知序是免费、开源、自托管的企业知识工作空间，面向内部团队与客服团队。文档、检索、模型连接、可视化工作流、证据引用、会话反馈和评测都运行在部署者控制的环境中。
 
-**产品名称：** **知序 · Enterprise Knowledge**。GitHub 仓库 slug 暂时保留为 `universal-knowledge-base` 以保持链接连续，面向客户展示的产品品牌是“知序”。
+产品品牌保持为 **知序**，英文为 **Zhixu · Enterprise Knowledge**。`universal-knowledge-base` 作为仓库 slug 保留，用于兼容已有链接。
 
-## 可以构建什么
+## 功能
 
-- **多组织知识服务。** 隔离组织数据，管理 owner/admin/editor/viewer 角色，签发可撤销 API Key，查看套餐与用量。
-- **可配置的问答流程。** 在拖拽画布组合输入、多库检索、过滤、去重、重排、证据门控、提示、模型分支、合并和输出。保存草稿、发布不可变版本、回滚并检查节点运行轨迹。
-- **客服知识运营闭环。** 通过持久任务导入资料与重试，查看会话和回答来源、收集反馈、导出对话，定位证据不足的问题。
-- **检索比较工作台。** 针对带标签的问题比较最多三套参数，计算文档级 Precision、Recall、MRR、Hit Rate 和 nDCG。未标注问题不显示虚构质量分；回答忠实度需要人工核查。
+- 多租户组织隔离，以及 owner、admin、editor、viewer 权限。
+- 多知识库、受限文档解析和可恢复的持久导入任务。
+- 可选择的文件解析模块、中文编码识别、结构化表格与 SHA-256 来源校验；画布可直接连接已解析文件。
+- 混合检索、可选重排、证据门控和绑定来源的引用。
+- 多个 OpenAI 兼容模型连接，以及并行或综合式混合模型工作流。
+- 可视化拖拽编排器，支持草稿、不可变版本、回滚和运行追踪。
+- 会话反馈、知识缺口洞察、检索评测和导出。
+- 中文和英文管理端界面，并持久保存语言选择。
 
-模型连接支持地址、模型、提示和生成参数配置，凭据使用部署管理员允许的环境变量引用。Embedding 身份保留为部署级设置，防止单个组织直接改变共享索引维度。
+默认运行时不限制成员数、知识库数、文档数或回答次数，不调用支付服务，也默认不收集遥测数据。部署者可以在应用外使用反向代理、存储策略或进程级预算进行本地运行保护，不会引入产品依赖。
 
-![可视化编排、模型参数与运行追踪](docs/images/workflow.png)
+![文件证据编排、可见连线与运行追踪](docs/images/workflow.jpg)
 
-截图使用合成资料与模型适配器，详见[验证结果与适用边界](docs/verification.md)。
+截图使用合成资料与本地适配器，详见[验证结果](docs/verification.md)。
 
 ## 架构
 
-结构图同时提供[独立架构说明](docs/architecture.md)，并附带纯文本回退，确保 GitHub 不渲染 Mermaid 时仍能看到完整结构。
+下面的结构图也提供在[独立架构说明](docs/architecture.md)中，文档同时包含纯文本回退图，确保 GitHub 不渲染 Mermaid 时仍能查看完整结构。
 
 ```mermaid
 flowchart LR
-    UI[本地浏览器模块] --> API[FastAPI SaaS 工厂]
-    API --> Identity[会话 · 组织 · 角色]
+    Browser[浏览器管理工作台] --> API[FastAPI 自托管 API]
+    API --> Auth[会话 · 组织 · 角色]
     API --> SQL[(SQLite / PostgreSQL)]
     API --> Jobs[带租约的导入任务]
-    Jobs --> Index[Chroma · BM25 · 本地 Embedding]
-    API --> Graph[版本化流程执行]
-    Graph --> Index
-    Graph --> Models[白名单模型连接]
-    API --> Billing[配额 · Stripe 签名事件]
+    Jobs --> Parse[受限文档解析]
+    Parse --> Chunks[(带来源摘要的 SQL 片段)]
+    Parse --> Index[Chroma · BM25 · 本地 Embedding]
+    API --> Graph[版本化可视化工作流]
+    Graph --> Files[选定文件资料]
+    Files --> Chunks
+    Graph --> Retrieve[多知识库检索 · 过滤 · 重排]
+    Retrieve --> Index
+    Graph --> Models[管理员批准的模型连接]
+    Graph --> Evidence[证据门控 · 引用映射]
+    API --> Ops[反馈 · 洞察 · 检索评测]
 ```
 
-SQL 中的成员关系和文档记录决定可见资源；检索结果在使用前通过 SQL 校验并重建。轻量 API 启动不加载大型模型。浏览器使用本地 JavaScript 模块与 CSS，无需前端构建或脚本 CDN。
+每个组织范围的查询都会通过 SQL 成员关系校验，检索结果在进入模型上下文前重新加载并检查。核心启动不会加载大型模型，管理 API 不依赖外部服务。
 
 ## 本地启动
 
-已验证的轻量 API 环境为 Python 3.13。在 Windows 执行：
+使用 Python 3.13，本地验证环境为 Windows：
 
 ```powershell
 python -m venv .venv
@@ -49,41 +59,15 @@ Copy-Item backend/.env.template backend/.env
 python start.py
 ```
 
-Linux 环境命令使用 `.venv/bin/python`。打开 [localhost:8000](http://localhost:8000)，创建第一个组织；自托管 API 文档位于 `/docs`。`start.bat` 使用同一前台启动器，Ctrl+C 停止服务。
+Linux 使用 `.venv/bin/python`。打开 <http://localhost:8000> 创建第一个组织，再从管理端配置模型连接。API 文档位于 `/docs`。
 
-轻量 API 环境可仅安装 `backend/requirements-core.lock`。实际本地索引、Embedding 和文档解析需要可选 RAG 依赖与模型缓存，首次使用可能下载模型权重。RAG 文件固定直接依赖版本，其机器学习传递依赖在生产发布前仍需按目标平台完整冻结。来源、许可证与 commit 记录见 [docs/dependencies](docs/dependencies)。
+仅运行 API 时可安装 `backend/requirements-core.lock`；本地解析、Embedding 和索引使用可选的 RAG lock 文件。凭据保存在部署环境，由管理员批准的模型连接引用。
 
-在 `backend/.env` 配置默认模型，或先允许提供者主机和凭据环境变量，再通过管理端添加模型连接：
+详见[部署与迁移](docs/deployment.md)、[文件解析模块](docs/parsing.md)和[工作流指南](docs/workflows.md)。RAG lock 固定直接依赖；构建部署镜像前还应冻结目标平台的传递依赖。离线部署需预备模型权重并使用本地模型端点。
 
-```dotenv
-LLM_API_URL=https://api.deepseek.com/v1/chat/completions
-LLM_API_KEY=
-LLM_MODEL=deepseek-chat
-MODEL_ALLOWED_HOSTS=["api.openai.com","api.deepseek.com"]
-MODEL_ALLOWED_SECRET_REFS=["SUPPORT_MODEL_API_KEY"]
-```
+## 数据兼容
 
-默认模型的 `LLM_API_KEY` 可从 `backend/.env` 读取。模型连接引用的 `SUPPORT_MODEL_API_KEY` 则需要注入服务进程环境，仅写在该文件不会导出；Compose 在根目录 `.env` 配置后显式传入容器。多套独立凭据的配置见[部署说明](docs/deployment.md)。严格证据模式在没有检索依据时跳过模型调用；运行模型时会把选定上下文发送给配置的提供者，应根据数据要求选择服务和网络策略。
-
-通过[可视化编排指南](docs/workflows.md)配置多知识库、多模型与发布版本。
-
-## 资料与套餐
-
-文本、Markdown、CSV、JSON、HTML、DOCX、XLSX、PPTX 提供本地文本解析路径。PDF 依赖可选文本解析器，不包含扫描 PDF 的 OCR。Office 解析限制资源占用，仅提取文本；表格公式使用缓存值。失败导入保留源文件，供重试或删除。
-
-| 套餐 | 成员 | 知识库 | 文档 | 每 UTC 月成功回答 |
-| --- | ---: | ---: | ---: | ---: |
-| Free | 1 | 3 | 50 | 100 |
-| Team | 10 | 20 | 1,000 | 5,000 |
-| Business | 50 | 100 | 10,000 | 50,000 |
-
-回答在上游调用前预留配额，已知失败或取消会释放，成功后确认用量。进程直接崩溃可能留下运行中回答的预留额度，需要运维核对处理。Stripe 结账与客户门户需要部署凭据和价格 ID；浏览器跳转不会授予套餐，签名事件及权威订阅状态决定权限。价格由部署者配置。
-
-## 部署与升级
-
-[部署与迁移说明](docs/deployment.md) 包含 Docker Compose、PostgreSQL、HTTPS Cookie、备份和旧工作区显式认领。新注册账号不会自动获得旧工作区。SQLite 适合单实例；PostgreSQL 与共享索引并发需要部署验收，当前不承诺集群恰好一次索引写入。
-
-当前范围不包含 SSO/SCIM、租户自管密钥保险库、任意代码执行节点、OCR 或多份已付款订阅的自动对账。这些能力需要额外集成后才能作为产品功能提供。
+SQLite 适合单实例，PostgreSQL 可用于共享部署。启动过程保留已有记录并增量添加解析配置，旧的历史核算表和字段保留但被忽略。旧工作流关联字段的必填约束在事务中解除，原有数据和 ID 保持不变。升级前需同时备份 SQL、源文件和向量索引；原始版本的工作区认领步骤见部署文档。
 
 ## 验证
 
@@ -94,17 +78,8 @@ python -m pip check
 node --test tests/web/*.test.mjs
 ```
 
-API 测试使用临时 SQLite，以及合成检索、模型与支付适配器，检查认证、租户边界、配额、导入恢复和失败路径。真实 PostgreSQL、Chroma/模型、Docker 运行与 Stripe 集成需要部署冒烟测试。接口正确性不能证明实际资料的检索质量或回答忠实度。
+测试使用临时 SQLite 和合成检索、模型适配器，覆盖租户隔离、权限、导入、会话、引用、反馈、评测、工作流、取消、恢复和公开文件边界。
 
-## 代码导航
+## 贡献与许可证
 
-| 路径 | 职责 |
-| --- | --- |
-| `backend/app/saas/` | 带组织范围的身份、计费、知识、会话、评测与编排服务 |
-| `backend/app/rag_engine.py` | 现有本地解析、Embedding、索引和混合检索 |
-| `backend/app/main.py` | 部署入口和本地页面资源 |
-| `web/` | 管理工作空间与可视化编排器 |
-| `tests/` | 离线 API 与浏览器模块行为测试 |
-| `backend/.env.template` | 部署配置参考 |
-
-项目目前没有声明统一许可证。
+欢迎通过 issue 和 pull request 贡献，详见[贡献指南](CONTRIBUTING.md)。项目采用 [Apache-2.0](LICENSE) 许可证。

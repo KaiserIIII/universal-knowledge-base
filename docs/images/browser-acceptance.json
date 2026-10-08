@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-08",
+  "browser": "155.0.8059.40",
+  "driver": "Playwright 1.62.1",
+  "fixture": "Disposable synthetic workspace",
+  "checks": [
+    "English branding and removal of commercial navigation",
+    "Parser mode, encoding and row limit saved",
+    "File workflow drag, visible connections, validation, draft, published run and trace",
+    "Saved selection and historical run restored after reload",
+    "File deselection preserved after reopening node",
+    "English deployment settings",
+    "Chinese language switch and reload persistence",
+    "390px knowledge page without horizontal document overflow"
+  ],
+  "errors": []
+}

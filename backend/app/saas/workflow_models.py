@@ -42,7 +42,8 @@ class WorkflowRun(Base):
     workspace_id: Mapped[str] = mapped_column(GUID(), ForeignKey('workspaces.id'), index=True)
     version_id: Mapped[str | None] = mapped_column(GUID(), ForeignKey('saas_workflow_versions.id'))
     created_by: Mapped[str] = mapped_column(GUID(), ForeignKey('saas_users.id'))
-    reservation_id: Mapped[str] = mapped_column(GUID(), ForeignKey('saas_answer_reservations.id'), unique=True)
+    # Legacy nullable column retained for additive schema compatibility.
+    reservation_id: Mapped[str | None] = mapped_column(GUID(), unique=True)
     status: Mapped[str] = mapped_column(String(32), default='queued', index=True)
     worker_id: Mapped[str] = mapped_column(GUID())
     lease_until: Mapped[object] = mapped_column(DateTime(timezone=True), index=True)

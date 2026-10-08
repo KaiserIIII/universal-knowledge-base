@@ -1,5 +1,4 @@
 import {t,html,staticHTML,localizePage,bindLanguageControl,localeURL,getLocale} from './i18n.js';
-const returnhtml=html;
 import {NODE_TYPES,GraphHistory,connect,removeNode,makeNode} from './graph.js';
 import {esc,toast} from './dom.js';
 
@@ -32,7 +31,7 @@ export class GraphCanvas{
   transform(){this.space.style.transform=`translate(${this.view.x}px,${this.view.y}px) scale(${this.view.scale})`;this.host.querySelector('.canvas-zoom span').textContent=`${Math.round(this.view.scale*100)}%`;}
   paint(){
     this.nodes.innerHTML=this.graph.nodes.map(node=>{const meta=NODE_TYPES[node.type];return`<article data-node="${esc(node.id)}" class="graph-node ${node.id===this.selected?'selected':''} ${this.pending===node.id?'connecting':''}" style="left:${Number(node.position.x)||0}px;top:${Number(node.position.y)||0}px"><div class="graph-node-header"><span class="node-icon">${meta.icon}</span><strong>${esc(node.label||t(meta.name))}</strong></div><div class="graph-node-detail">${t(meta.name)}${node.type==='retrieval'?html` · ${(node.config.kb_ids||[]).length} 个知识库`:node.type==='model'&&!node.config.profile_id?t(' · 选择模型'):''}</div>${meta.accepts.length?html`<button data-in="${esc(node.id)}" class="node-port port-in" aria-label="连接到 ${esc(node.label||t(meta.name))}"></button>`:''}${meta.output?html`<button data-out="${esc(node.id)}" class="node-port port-out" aria-label="从 ${esc(node.label||t(meta.name))} 连接"></button>`:''}</article>`;}).join('');
-    this.svg.innerHTML=this.graph.edges.map(edge=>{const a=this.graph.nodes.find(n=>n.id===edge.source),b=this.graph.nodes.find(n=>n.id===edge.target);if(!a||!b)return'';const x1=a.position.x+220,y1=a.position.y+53,x2=b.position.x,y2=b.position.y+53;const bend=Math.max(80,Math.abs(x2-x1)*0.45);returnhtml`<path data-edge="${esc(edge.id)}" aria-label="删除连线" d="M${x1},${y1} C${x1+bend},${y1} ${x2-bend},${y2} ${x2},${y2}"/>`;}).join('');this.transform();
+    this.svg.innerHTML=this.graph.edges.map(edge=>{const a=this.graph.nodes.find(n=>n.id===edge.source),b=this.graph.nodes.find(n=>n.id===edge.target);if(!a||!b)return'';const x1=a.position.x+220,y1=a.position.y+53,x2=b.position.x,y2=b.position.y+53;const bend=Math.max(80,Math.abs(x2-x1)*0.45);return html`<path data-edge="${esc(edge.id)}" aria-label="删除连线" d="M${x1},${y1} C${x1+bend},${y1} ${x2-bend},${y2} ${x2},${y2}"/>`;}).join('');this.transform();
   }
   dispose(){this.host.removeEventListener('click',this.click);this.host.removeEventListener('pointerdown',this.down);window.removeEventListener('pointermove',this.move);window.removeEventListener('pointerup',this.up);this.host.removeEventListener('wheel',this.wheel);this.host.removeEventListener('keydown',this.key);this.host.ondragover=null;this.host.ondrop=null;}
 }

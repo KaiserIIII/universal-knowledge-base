@@ -1,6 +1,6 @@
-# English Interface Implementation Plan
+# English Interface Implementation
 
-**Goal:** Complete the approved SaaS interface with a persisted Chinese/English selector and publish the verified update before merging the existing PR.
+**Goal:** Complete the approved knowledge workspace interface with a persisted Chinese/English selector and publish the verified update before merging the existing PR.
 
 **Architecture:** Keep the local ESM frontend and API unchanged. A shared dictionary and explicit static-template translation helpers localize application copy while preserving interpolated business data. A confirmed page reload applies the selected language and retains the route; a validated URL lang parameter also works when storage is unavailable.
 
@@ -44,7 +44,7 @@ assert.ok(html`<h2>知识库</h2><p>${'知识库：中文合成资料'}</p>`
   .includes('<p>知识库：中文合成资料</p>'));
 ```
 
-- [ ] Localize every listed view and static page, preserving all user-controlled values and API/config data. Keep unknown errors as received. Localize date formatting and safe error/quota messages.
+- [ ] Localize every listed view and static page, preserving all user-controlled values and API/config data. Keep unknown errors as received. Localize date formatting and safe error messages.
 - [ ] Add the selector and confirmed reload, including unavailable-storage URL fallback, cancel-without-write and current-hash preservation tests. Keep existing interaction and scope-race regressions meaningful.
 - [ ] Run `node --test tests/web/*.test.mjs`, syntax-check every `web/*.js`, and `git diff --check`. Write exact commands/results and remaining concerns in the task report. Stage only owned frontend/tests and commit the completed task.
 

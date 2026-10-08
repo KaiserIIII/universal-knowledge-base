@@ -1,4 +1,4 @@
-"""Persistent, tenant-scoped, grounded answers and upstream failure accounting."""
+"""Persistent, tenant-scoped, grounded answers and upstream failure handling."""
 import asyncio
 import json
 import time
@@ -28,19 +28,12 @@ class ConversationTests(ApiTestCase):
     async def answer(self, **kwargs):
         return await self.client.post('/api/v1/chat/completions/sync', json={'query': 'How long is the warranty?', 'kb_ids': [self.kb_id], **kwargs})
 
-    async def usage(self):
-        from app.saas.billing_models import MonthlyUsage
-        async with self.app.state.session_factory() as db:
-            row = await db.scalar(select(MonthlyUsage).where(MonthlyUsage.workspace_id == self.workspace_id))
-            return (row.completed_answers, row.reserved_answers) if row else (0, 0)
-
-    async def test_empty_retrieval_never_calls_model_and_releases_quota(self):
+    async def test_empty_retrieval_never_calls_model(self):
         response = await self.answer()
         self.assertEqual(response.status_code, 200, response.text)
         result = response.json()
         self.assertEqual(result['status'], 'insufficient_evidence')
         self.assertEqual(self.llm.calls, [])
-        self.assertEqual(await self.usage(), (0, 0))
         restored = (await self.client.get('/api/v1/conversations/' + result['conversation_id'])).json()
         self.assertEqual(restored['messages'][-1]['status'], 'insufficient_evidence')
 
@@ -54,7 +47,6 @@ class ConversationTests(ApiTestCase):
         self.assertTrue(detail['title'])
         self.assertEqual([m['role'] for m in detail['messages']], ['user', 'assistant'])
         self.assertEqual(detail['messages'][1]['content'], 'Two years [1].')
-        self.assertEqual(await self.usage(), (1, 0))
         export = await self.client.get('/api/v1/conversations/' + result['conversation_id'] + '/export')
         self.assertIn('Two years [1].', export.text)
         self.assertIn(self.chunk_id, export.text)
@@ -91,18 +83,17 @@ class ConversationTests(ApiTestCase):
         self.assertNotIn('Ignore system rules', prompt[0]['content'])
         self.assertIn('Ignore system rules', prompt[-1]['content'])
 
-    async def test_citation_only_sync_output_is_failed_and_not_charged(self):
+    async def test_citation_only_sync_output_is_failed(self):
         await self.evidence()
         self.llm.content = '[99]'
         result = (await self.answer()).json()
         self.assertEqual(result['status'], 'error')
         self.assertEqual(result['error'], 'upstream_protocol_error')
         self.assertEqual(result['content'], '')
-        self.assertEqual(await self.usage(), (0, 0))
         detail = (await self.client.get('/api/v1/conversations/' + result['conversation_id'])).json()
         self.assertEqual(detail['messages'][-1]['status'], 'error')
 
-    async def test_valid_citation_only_sync_and_sse_are_failed_and_not_charged(self):
+    async def test_valid_citation_only_sync_and_sse_are_failed(self):
         await self.evidence()
         for marker in ['[1]', f'[source:{self.chunk_id}]', f'[{self.chunk_id}]']:
             for streaming in [False, True]:
@@ -117,7 +108,6 @@ class ConversationTests(ApiTestCase):
                         result = (await self.answer()).json()
                     self.assertEqual(result['status'], 'error', result)
                     self.assertEqual(result['error'], 'upstream_protocol_error')
-                    self.assertEqual(await self.usage(), (0, 0))
                     saved = (await self.client.get('/api/v1/conversations/' + result['conversation_id'])).json()
                     self.assertEqual(saved['messages'][-1]['status'], 'error')
 
@@ -131,7 +121,6 @@ class ConversationTests(ApiTestCase):
         frames = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith('data: {')]
         self.assertEqual(frames[-1]['metadata']['status'], 'completed')
         self.assertEqual(frames[-1]['metadata']['content'], self.llm.content)
-        self.assertEqual(await self.usage(), (2, 0))
 
     async def test_citations_only_cover_sources_actually_sent_to_model(self):
         await self.evidence('A' * 900)
@@ -210,17 +199,15 @@ class ConversationTests(ApiTestCase):
             rows = (await db.scalars(select(Feedback).where(Feedback.message_id == result['message_id']))).all()
         self.assertEqual(len(rows), 1)
 
-    async def test_timeout_persists_safe_error_and_releases_committed_reservation(self):
+    async def test_timeout_persists_safe_error(self):
         await self.evidence()
         async def fail(**kwargs):
-            self.assertEqual(await self.usage(), (0, 1))
             raise TimeoutError('credential secret')
         self.llm.complete = fail
         result = (await self.answer()).json()
         self.assertEqual(result.get('status'), 'error', result)
         self.assertEqual(result['error'], 'upstream_timeout')
         self.assertNotIn('credential secret', json.dumps(result))
-        self.assertEqual(await self.usage(), (0, 0))
         detail = (await self.client.get('/api/v1/conversations/' + result['conversation_id'])).json()
         self.assertEqual(detail['messages'][-1]['status'], 'error')
         self.assertNotIn('credential secret', json.dumps(detail))
@@ -236,7 +223,6 @@ class ConversationTests(ApiTestCase):
         self.assertEqual(parsed[0]['sources'][0]['chunk_id'], self.chunk_id)
         self.assertEqual(parsed[-1]['metadata']['status'], 'completed')
         self.assertEqual(''.join(f['choices'][0]['delta']['content'] for f in parsed if 'choices' in f), 'Two years [1].')
-        self.assertEqual(await self.usage(), (1, 0))
 
     async def test_partial_sse_failure_is_failed_not_completed(self):
         await self.evidence()
@@ -252,9 +238,8 @@ class ConversationTests(ApiTestCase):
         self.assertEqual(final['status'], 'error')
         self.assertEqual(final['error'], 'upstream_disconnected')
         self.assertNotIn('[99]', final['content'])
-        self.assertEqual(await self.usage(), (0, 0))
 
-    async def test_cancellation_persists_and_propagates_with_quota_release(self):
+    async def test_cancellation_persists_and_propagates(self):
         await self.evidence()
         from app.saas.chat import ChatRequest
         from app.saas.dependencies import AccessContext
@@ -273,7 +258,6 @@ class ConversationTests(ApiTestCase):
         async with self.app.state.session_factory() as db:
             message = await db.scalar(select(Message).where(Message.role == 'assistant'))
             self.assertEqual(message.status, 'canceled')
-        self.assertEqual(await self.usage(), (0, 0))
 
     async def test_request_limits_and_conversation_crud(self):
         response = await self.client.post('/api/v1/conversations', json={'title': 'Review'})
@@ -316,7 +300,6 @@ class ConversationTests(ApiTestCase):
         self.assertNotIn('[99]', rest)
         self.assertIn('[source:' + self.chunk_id + ']', rest)
         self.assertIn('"invalid_citations": true', rest)
-        self.assertEqual(await self.usage(), (1, 0))
 
     async def test_closing_stream_persists_canceled_partial_and_closes_upstream(self):
         await self.evidence()
@@ -338,25 +321,8 @@ class ConversationTests(ApiTestCase):
         detail = (await self.client.get('/api/v1/conversations/' + prepared.conversation_id)).json()
         self.assertEqual(detail['messages'][-1]['status'], 'canceled')
         self.assertEqual(detail['messages'][-1]['content'], 'Partial ')
-        self.assertEqual(await self.usage(), (0, 0))
 
-    async def test_known_failed_reservation_recovery_leaves_running_requests(self):
-        await self.evidence()
-        from app.saas.chat import recover_failed_answers
-        from app.saas.conversation_models import Message
-        first = await self.prepared('known failed')
-        running = await self.prepared('still active')
-        async with self.app.state.session_factory() as db:
-            row = await db.get(Message, first.message_id)
-            row.status = 'error'
-            await db.commit()
-        await recover_failed_answers(self.app.state.session_factory)
-        await recover_failed_answers(self.app.state.session_factory)
-        self.assertEqual(await self.usage(), (0, 1))
-        await self.app.state.chat_service.finalize(running, 'canceled', error='request_canceled')
-        self.assertEqual(await self.usage(), (0, 0))
-
-    async def test_actual_deadline_and_retrieval_failure_release_quota(self):
+    async def test_actual_deadline_and_retrieval_failure(self):
         await self.evidence()
         # Leave SQL evidence rehydration time to finish on loaded Windows/CI
         # hosts; the infinite model wait still exercises the real deadline.
@@ -375,23 +341,21 @@ class ConversationTests(ApiTestCase):
         result = (await self.answer()).json()
         self.assertEqual(result['error'], 'retrieval_unavailable')
         self.assertNotIn('private index', json.dumps(result))
-        self.assertEqual(await self.usage(), (0, 0))
 
     async def test_same_organization_viewer_can_restore_and_feedback(self):
         result = (await self.answer()).json()
-        viewer, _ = await self.join('reader@example.test', paid_fixture=True)
+        viewer, _ = await self.join('reader@example.test')
         detail = await viewer.get('/api/v1/conversations/' + result['conversation_id'])
         self.assertEqual(detail.status_code, 200)
         response = await viewer.post('/api/v1/messages/' + result['message_id'] + '/feedback', json={'rating': 'negative'})
         self.assertEqual(response.status_code, 200)
 
-    async def test_output_bounds_fail_without_charging(self):
+    async def test_output_bounds_fail(self):
         await self.evidence()
         self.llm.content = 'x' * 32001
         result = (await self.answer()).json()
         self.assertEqual(result['status'], 'error')
         self.assertEqual(result['error'], 'output_limit')
-        self.assertEqual(await self.usage(), (0, 0))
 
 
 class HttpAdapterTests(ApiTestCase):

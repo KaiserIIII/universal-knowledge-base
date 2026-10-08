@@ -1,5 +1,5 @@
 """
-通用知识库系统 — 全局配置中心 (零依赖嵌入式版本)
+知序 — 全局配置中心（本地嵌入式服务）
 基于 pydantic-settings，支持 .env 文件和 OS 环境变量覆盖
 """
 from pathlib import Path
@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     )
 
     # ── 应用基础 ──────────────────────────────────
-    app_name: str = "通用知识库"
-    app_version: str = "2.1.0-embedded"
+    app_name: str = "Zhixu · Enterprise Knowledge"
+    app_version: str = "3.1.0"
     debug: bool = False
 
     # ── 数据库 (SQLite) ───────────────────────────

@@ -46,11 +46,11 @@ class RAGRetriever:
         except Exception:
             raise HTTPException(503, 'Local reranking capability unavailable') from None
 
-    async def parse(self, file_path, filename, kb_id, doc_id, chunk_size, chunk_overlap, use_unstructured=False):
+    async def parse(self, file_path, filename, kb_id, doc_id, chunk_size, chunk_overlap, use_unstructured=False, parser_config=None):
         try:
             from app.rag_engine import DocumentProcessor
             processor = DocumentProcessor(chunk_size, chunk_overlap, settings=self.settings,
-                use_unstructured=use_unstructured)
+                use_unstructured=use_unstructured, parser_config=parser_config)
             return await asyncio.to_thread(processor.parse_and_chunk, file_path, filename, kb_id, doc_id)
         except Exception:
             raise HTTPException(503, 'Local parsing capability unavailable') from None

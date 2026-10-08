@@ -30,6 +30,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .config import get_settings
 from .schemas import ChunkMatch
+from .parsing import ParserOptions, decode_text, parse_tabular, validate_selection
 
 logger = logging.getLogger("rag_engine")
 
@@ -318,7 +319,7 @@ class DocumentProcessor:
     ]
 
     def __init__(self, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None,
-                 settings=None, use_unstructured: Optional[bool] = None):
+                 settings=None, use_unstructured: Optional[bool] = None, parser_config=None):
         cfg = settings if settings is not None else get_settings()
         self.chunk_size = chunk_size if chunk_size is not None else cfg.chunk_default_size
         self.chunk_overlap = (
@@ -327,6 +328,7 @@ class DocumentProcessor:
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("chunk_overlap must be smaller than chunk_size")
         self.use_unstructured = cfg.use_unstructured if use_unstructured is None else use_unstructured
+        self.parser_options = ParserOptions.model_validate(parser_config or {})
 
         self.text_splitter = RecursiveCharacterTextSplitter(
             separators=self.SEMANTIC_SEPARATORS,
@@ -372,12 +374,15 @@ class DocumentProcessor:
 
     def _parse_file(self, file_path: str, filename: str) -> str:
         ext = Path(filename).suffix.lower()
+        validate_selection(filename, self.parser_options)
+        if ext in {'.csv', '.tsv'} and self.parser_options.mode != 'text':
+            return parse_tabular(file_path, ext, self.parser_options)
 
         # Bound archive/XML expansion before any optional Office parser sees it.
         if ext in {'.docx', '.xlsx', '.pptx'}:
             return self._parse_office(file_path, ext)
 
-        if self.use_unstructured:
+        if self.use_unstructured and self.parser_options.mode == 'auto':
             try:
                 return self._parse_unstructured(file_path)
             except Exception:
@@ -385,12 +390,10 @@ class DocumentProcessor:
 
         if ext == ".pdf":
             return self._parse_pdf(file_path)
-        elif ext == ".doc":
-            return self._parse_docx(file_path)
         elif ext in (".html", ".htm"):
             return self._parse_html(file_path)
         else:
-            return Path(file_path).read_text(encoding="utf-8", errors="replace")
+            return decode_text(Path(file_path).read_bytes(), self.parser_options.text_encoding)
 
     def _parse_office(self, file_path: str, ext: str) -> str:
         """Bounded text-only Office reader; no extraction, macros, links or OCR."""
@@ -466,10 +469,15 @@ class DocumentProcessor:
                 rows = cells = 0
                 for name in selected:
                     append('[Sheet ' + re.search(r'(\d+)\.xml$', name).group(1) + ']')
+                    sheet_rows = 0
                     for row in xml(name).iter():
                         if local(row.tag) != 'row':
                             continue
                         rows += 1
+                        sheet_rows += 1
+                        if sheet_rows > self.parser_options.max_rows:
+                            append('[Table truncated by local row limit]')
+                            break
                         if rows > 100_000:
                             raise ValueError('Too many spreadsheet rows')
                         values, row_chars = [], 0
@@ -549,7 +557,7 @@ class DocumentProcessor:
     def _parse_html(self, file_path: str) -> str:
         try:
             from bs4 import BeautifulSoup
-            soup = BeautifulSoup(Path(file_path).read_text(encoding="utf-8", errors="replace"), "html.parser")
+            soup = BeautifulSoup(decode_text(Path(file_path).read_bytes(), self.parser_options.text_encoding), "html.parser")
             for tag in soup(["script", "style", "nav", "footer", "header"]):
                 tag.decompose()
             return soup.get_text(separator="\n")
@@ -569,7 +577,7 @@ class DocumentProcessor:
                     if not self.hidden and data.strip():
                         self.parts.append(data.strip())
             parser = VisibleText()
-            parser.feed(Path(file_path).read_text(encoding='utf-8', errors='replace'))
+            parser.feed(decode_text(Path(file_path).read_bytes(), self.parser_options.text_encoding))
             parser.close()
             return '\n'.join(parser.parts)
 
@@ -595,8 +603,10 @@ class RAGEngine:
 
     def _init_chroma_sync(self):
         import chromadb
+        from chromadb.config import Settings as ChromaSettings
 
-        client = chromadb.PersistentClient(path=self.persist_dir)
+        client = chromadb.PersistentClient(path=self.persist_dir,
+            settings=ChromaSettings(anonymized_telemetry=False, chroma_otel_collection_endpoint=''))
         try:
             collection = client.get_collection(self.collection_name)
         except Exception:

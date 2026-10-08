@@ -1,4 +1,4 @@
-"""Concurrent typed DAG execution with SQL-fenced quota and worker leases.
+"""Concurrent typed DAG execution with SQL-fenced worker leases.
 
 Only immutable run snapshots enter the executor. Branches hold independent read
 sessions; no AsyncSession or mutable model settings cross task boundaries.
@@ -19,10 +19,10 @@ from .chat import (INSUFFICIENT, MAX_OUTPUT_CHARS, build_grounded_context,
 from .dependencies import lock_workspace
 from .llm import OutputLimitError, UpstreamProtocolError
 from .models import new_id, utcnow
-from .quotas import finish_answer, reserve_answer
 from .retrieval import scoped_search
 from .security import aware
 from .workflow_models import WorkflowRun
+from .file_evidence import file_sources
 
 ACTIVE = {'queued', 'running', 'canceling'}
 
@@ -106,9 +106,8 @@ class WorkflowService:
             await self.finalize(row.id, 'canceled', Value(), trace, row.duration_ms, 'worker_stopped')
 
     async def submit(self, db, access, workflow_id, version_id, graph, profiles, query):
-        reservation = await reserve_answer(db, access.workspace_id)
         run = WorkflowRun(id=new_id(), workflow_id=workflow_id, workspace_id=access.workspace_id,
-            version_id=version_id, created_by=access.user_id, reservation_id=reservation.id,
+            version_id=version_id, created_by=access.user_id,
             worker_id=self.worker_id, lease_until=utcnow() + timedelta(seconds=self.settings.workflow_lease_seconds),
             graph=copy.deepcopy(graph), trace=[self.trace_node(node) for node in graph['nodes']])
         db.add(run); await db.commit()
@@ -133,7 +132,7 @@ class WorkflowService:
     @staticmethod
     def trace_node(node):
         config = node['config']
-        refs = {key: config[key] for key in ('kb_ids', 'profile_id', 'top_k', 'context_chars', 'temperature',
+        refs = {key: config[key] for key in ('kb_ids', 'doc_ids', 'profile_id', 'top_k', 'context_chars', 'temperature',
             'top_p', 'max_tokens', 'timeout_seconds', 'mode', 'min_sources') if key in config}
         return {'node_id': node['id'], 'label': node['label'], 'status': 'pending',
                 'duration_ms': 0, 'result_count': 0, 'config_refs': refs}
@@ -196,7 +195,7 @@ class WorkflowService:
                     raise
                 except Exception as exc:
                     code = error_category(exc)
-                    if nodes[id]['type'] in {'retrieval', 'rerank'}:
+                    if nodes[id]['type'] in {'retrieval', 'rerank', 'files'}:
                         code = 'retrieval_timeout' if isinstance(exc, TimeoutError) else 'retrieval_unavailable'
                     trace['status'], trace['error'] = 'error', code
                     return Value(errors=[code])
@@ -243,6 +242,10 @@ class WorkflowService:
         degraded = any(value.degraded for value in values)
         min_sources = max((value.min_sources for value in values), default=1)
         if kind == 'input': return Value()
+        if kind == 'files':
+            async with self.sessions() as db:
+                sources = await file_sources(db, access, config)
+            return Value(sources=bounded(query, sources, config['context_chars']))
         if kind == 'retrieval':
             async with self.sessions() as db:
                 sources = await scoped_search(db, access, self.retriever, query=query, **{
@@ -328,7 +331,7 @@ class WorkflowService:
         if len(result['content']) > MAX_OUTPUT_CHARS: raise OutputLimitError()
         answer, invalid = canonical_citations(result['content'], sources)
         # References alone are not a usable answer, even when every marker is
-        # valid. Do not consume an answer reservation for an empty assertion.
+        # valid. Empty assertions cannot become completed answers.
         if not has_usable_answer(answer): raise UpstreamProtocolError()
         return Value(sources=sources, answer=answer, invalid=invalid or prior_invalid, degraded=degraded,
                      min_sources=min_sources)
@@ -347,12 +350,11 @@ class WorkflowService:
             row.duration_ms, row.finished_at = duration_ms, utcnow()
             if status in {'completed', 'degraded', 'insufficient_evidence'}:
                 row.answer, row.sources, row.invalid_citations = value.answer, value.sources, value.invalid
-            await finish_answer(db, row.workspace_id, row.reservation_id, succeeded=status in {'completed', 'degraded'})
             await db.commit()
 
     @finish_transaction
     async def recover_expired(self):
-        """Release only expired leases; active workers retain their reservations."""
+        """Mark expired worker leases without replaying upstream model calls."""
         async with self.sessions() as db:
             ids = (await db.scalars(select(WorkflowRun.id).where(WorkflowRun.status.in_(ACTIVE), WorkflowRun.lease_until < utcnow()))).all()
         for id in ids:
@@ -366,7 +368,6 @@ class WorkflowService:
                 row.status = 'canceled' if row.cancel_requested else 'error'
                 row.error, row.finished_at = 'worker_lease_expired', utcnow()
                 row.trace = [{**item, 'status': 'canceled' if item['status'] in {'pending', 'running'} else item['status']} for item in row.trace]
-                await finish_answer(db, row.workspace_id, row.reservation_id, succeeded=False)
                 await db.commit()
 
     async def _recovery_loop(self):

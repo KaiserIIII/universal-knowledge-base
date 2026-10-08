@@ -4,6 +4,7 @@ There is deliberately no claim of distributed exactly-once index execution.
 Expired workers may repeat writes; relational visibility remains authoritative.
 """
 import asyncio
+import hashlib
 from contextlib import suppress
 from datetime import timedelta
 from pathlib import Path
@@ -98,6 +99,8 @@ class IngestionWorker:
             job.update(chunk_size=config.chunk_size if config else self.settings.chunk_default_size,
                        chunk_overlap=config.chunk_overlap if config else self.settings.chunk_default_overlap,
                        use_unstructured=config.use_unstructured if config else self.settings.use_unstructured,
+                       parser_config=config.parser_config or {} if config else {},
+                       source_sha256=doc.file_hash if doc else None,
                        valid=doc is not None and kb is not None and not kb.is_deleted)
             await db.commit()
             return job
@@ -137,9 +140,13 @@ class IngestionWorker:
             if not job['valid']:
                 raise ValueError('Document unavailable')
             source = self._source(job['source_path'])
+            digest = await asyncio.to_thread(lambda: hashlib.sha256(source.read_bytes()).hexdigest())
+            if digest != job['source_sha256']:
+                raise ValueError('Source receipt does not match retained file')
             parsed = await self.retriever.parse(file_path=str(source), filename=job['filename'],
                 kb_id=job['kb_id'], doc_id=job['doc_id'], chunk_size=job['chunk_size'],
-                chunk_overlap=job['chunk_overlap'], use_unstructured=job['use_unstructured'])
+                chunk_overlap=job['chunk_overlap'], use_unstructured=job['use_unstructured'],
+                parser_config=job['parser_config'])
             for item in parsed:
                 content = item.get('content', '').strip()
                 if not content:
@@ -148,7 +155,8 @@ class IngestionWorker:
                 chunks.append({'chunk_id': str(uuid5(NAMESPACE_DNS, f"{job['doc_id']}:{index}")),
                     'doc_id': job['doc_id'], 'kb_id': job['kb_id'], 'filename': job['filename'],
                     'chunk_index': index, 'content': content, 'token_count': len(content) // 2,
-                    'metadata': {'kb_id': job['kb_id'], 'chunk_index': index}})
+                    'metadata': {'kb_id': job['kb_id'], 'chunk_index': index,
+                        'source_sha256': job['source_sha256'], 'parser_mode': job['parser_config'].get('mode', 'auto')}})
             if not chunks:
                 raise ValueError('No extractable content')
             async with self.sessions() as db:

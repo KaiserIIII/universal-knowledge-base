@@ -1,0 +1,10 @@
+Zhixu · Enterprise Knowledge / 知序
+Copyright 2026 KaiserIIII and contributors
+Distributed under the Apache License, Version 2.0.
+
+Design reference: KaiserIIII/langbot-unified-attachment-pipeline
+https://github.com/KaiserIIII/langbot-unified-attachment-pipeline
+Reviewed commit: 3c7ea58a67a9a30bc0c92738b8f9bcde63a34464
+License: Apache-2.0; reviewed on 2026-10-08.
+No executable source was copied or reference dependency installed.
+See docs/parsing.md and docs/dependencies for provenance.

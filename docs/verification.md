@@ -1,33 +1,60 @@
 # Verification evidence
 
-Core API verification on 2026-10-08 used a clean Python 3.13 virtual environment on Windows, the audited 24-package core lock, temporary SQLite databases and synthetic retriever, model and payment adapters. The final serial suite passed **137 tests** in 413.339 seconds. The browser module suite passed **26 tests**. These durations describe test runs, not service performance. Python compilation, dependency consistency, browser module syntax and Compose configuration checks also passed.
+The final backend run on 2026-10-08 passed **120 tests** in 337.913 seconds using Python 3.13 on Windows, temporary SQLite databases and synthetic adapters. The frontend module suite passed **33 tests** with no failures. These durations describe verification runs, not service performance. Python compilation, JavaScript syntax, dependency consistency, Compose configuration and Git whitespace checks also passed.
 
-| Area | Exercised behavior |
-| --- | --- |
-| Identity and organizations | Registration, sessions, CSRF, role changes, last owner, invitation expiry/reuse, API key revocation and foreign organization access |
-| Billing and quotas | Signed raw webhook bodies, idempotency, delayed checkout replacement, entitlement periods, reservation completion/release and resource limits |
-| Knowledge and imports | Scoped SQL rehydration, deleted/foreign evidence rejection, upload bounds, duplicate hashes, retryable leased jobs and bounded Office XML parsing |
-| Conversations | Fragmented SSE, authoritative terminal state, stale refresh rejection, partial upstream failure, cancellation, source-bound citations, citation-only output rejection, strict empty-evidence behavior, feedback, export and answer accounting |
-| Retrieval evaluation | Selected document labels, configuration bounds, unique-document precision/recall/MRR/hit rate/nDCG, null versus explicit-empty labels, bounded excerpts and authorization rechecks after unlocked retrieval |
-| Models and workflows | Scoped connections, allowed hosts and environment references, actual adapter parameter forwarding, typed graph validation, versions/rollback, independent branches, citation remapping, degraded synthesis, output/evidence budgets, cancellation and expired-run recovery |
-| Runtime and migration | Public file boundaries, cache/security headers, separate liveness and bounded database readiness probes, local API reference and explicit legacy ownership migration preserving existing knowledge IDs |
+Zhixu is free, open-source and self-hosted. Fresh databases have no commercial account tables or endpoints, and resource totals are unlimited. Historical accounting data is retained and ignored. The application disables Chroma telemetry by default.
 
-Reproduce the API checks from the repository root:
+## Reproduce core checks
 
 ```powershell
 .venv/Scripts/python.exe -m unittest discover -s tests -v
 .venv/Scripts/python.exe -m compileall -q backend/app tests start.py backend/run.py
 .venv/Scripts/python.exe -m pip check
 node --test tests/web/*.test.mjs
+Get-ChildItem web -Filter *.js | ForEach-Object { node --check $_.FullName }
 docker compose config --quiet
 ```
 
-On Linux use `.venv/bin/python`. Compose requires a configured `PUBLIC_ORIGIN`; enable optional PostgreSQL only with its required credentials. Configuration validation does not build or start a container.
+On Linux use `.venv/bin/python`. Compose needs a configured `PUBLIC_ORIGIN`; configuration validation does not build or start containers.
 
-Browser verification used a disposable local SQLite workspace and synthetic customer support documents. It exercised import/search, model settings, multi-model workflow execution, degraded branches, version rollback, cancellation, insufficient evidence, unfinished draft JSON import/export, conversation feedback/export and retrieval comparisons. A 121-document fixture verified access beyond the first 100 documents and relevance labels retained across pages. A 390px layout check confirmed navigation and no horizontal document overflow. The [workflow screenshot](images/workflow.png) records that synthetic UI, without live provider credentials.
+## Covered behavior
 
-The Chinese [manual evaluation rubric](evaluation.md) and [worked examples](../examples/customer-support/manual-judgments.md) support evidence review. They are illustrations, not a completed human study or model quality benchmark. Automated tests check scope isolation and citation/evidence plumbing; they do not prove a model resists arbitrary prompt injection or that an answer is faithful. No coverage percentage was measured.
+| Area | Exercised behavior |
+| --- | --- |
+| Identity and organizations | Registration, sessions, CSRF, role changes, last-owner protection, invitations, API-key revocation and foreign-organization rejection |
+| Knowledge and imports | Scoped SQL rehydration, upload bounds, duplicate hashes, retryable leased jobs, bounded Office XML parsing, source retention and changed-source rejection before parsing |
+| Parser modules | Chinese CSV/TSV extraction, row truncation, explicit encoding failures, encoded HTML with scripts removed, unsupported format rejection, settings forwarded to workers and SHA-256 chunk receipts |
+| Conversations | Fragmented SSE, terminal state reconciliation, cancellation, source-bound citations, insufficient evidence, feedback, export and knowledge-gap insights |
+| Retrieval evaluation | Selected document labels, configuration bounds, unique-document precision/recall/MRR/Hit Rate/nDCG, excerpts and authorization rechecks |
+| Models and workflows | Scoped connections, approved hosts and environment references, typed graph validation, versions/rollback, parallel branches, citation remapping, degraded synthesis, evidence limits and cancellation |
+| File evidence | Completed document scope checked during validation and execution, SQL-backed excerpts without a vector index, and deleted/foreign document rejection |
+| Runtime and migration | Public file boundaries, headers, liveness/readiness, legacy workspace claims, repeated SQLite updates preserving rows, generated columns, collation, indexes, trigger literals and default values |
 
-An additional offline local integration check exercised native Chroma 1.5.9, cached BGE Chinese embeddings, BM25, SQL evidence rehydration and the evaluation API against a locally copied existing LangBot index. A synthetic TXT upload also completed the actual parser, embedding, index write and tenant-scoped search path. Cross-tenant access was rejected, and full file fingerprints confirmed the original index was unchanged. Private corpus files, queries and per-case reports remain outside version control; this check establishes integration behavior, not generative answer quality. Loading the copied existing HNSW index on Windows required an ASCII path, as documented in [deployment](deployment.md).
+## Actual browser acceptance
 
-Production acceptance remains to be performed for PostgreSQL locking, Docker builds, PDF ingestion, live OpenAI-compatible providers and Stripe subscriptions. RAG direct dependencies are pinned and audited, but ML transitive dependencies need a platform-specific lock. Ordinary chat reservations interrupted by a process crash require operator reconciliation; expired workflow runs release reservations without replaying remote calls. Import job browsing exposes the API's newest 200 jobs. See [deployment](deployment.md) and [workflow behavior](workflows.md).
+The committed [browser smoke check](../tests/browser/smoke.cjs) ran in isolated Chrome 155.0.8059.40 with the already installed Playwright 1.62.1. It used the [local synthetic fixture](../tests/browser/preview.py), which creates a temporary database and never calls a model provider. It verified:
+
+- English branding and navigation without commercial pages; parser mode, encoding and row limits saved through the UI.
+- File-node dragging, visible graph connections, validation, saving, publishing, published execution, evidence and node traces.
+- Saved file selection and historical runs restored after reload; deselected files remain deselected when reopening a node.
+- English deployment settings, Chinese language switching and reload persistence.
+- A 390px knowledge page with document tables scrolling inside their container and no horizontal page overflow.
+
+No JavaScript page errors were observed. The [workflow screenshot](images/workflow.jpg), [parser settings](images/parser-settings.jpg) and [browser record](images/browser-acceptance.json) contain disposable synthetic data.
+
+Run the fixture in one terminal and the check in another, using an already installed Playwright module and Chrome:
+
+```powershell
+.venv/Scripts/python.exe tests/browser/preview.py
+node tests/browser/smoke.cjs
+```
+
+The default fixture origin is `http://127.0.0.1:8788`. `ZHIXU_PLAYWRIGHT_MODULE` can point to an existing Playwright installation; `ZHIXU_BROWSER_CHANNEL` selects an installed compatible browser. Artifacts default to `output/playwright`. These checks do not install dependencies or use deployment data. Stop the fixture with Ctrl+C after testing.
+
+## Corpus and evidence limits
+
+An earlier offline integration check exercised native Chroma 1.5.9, cached Chinese BGE embeddings, BM25, SQL evidence rehydration and the evaluation API against a copied existing LangBot index. A synthetic TXT import completed the actual parser, embedding, index write and tenant-scoped search path. Cross-tenant access was rejected, and file fingerprints confirmed that the original index was unchanged. Private corpus files, queries and reports remain outside version control. This integration was not repeated as part of the final open-source conversion.
+
+The Chinese [manual evaluation rubric](evaluation.md) and [worked examples](../examples/customer-support/manual-judgments.md) support human review. They are illustrations, not a completed human study or an answer-quality benchmark. Tests cover tenant leakage boundaries, adversarial evidence scope and untrusted-document instructions; they do not prove resistance to arbitrary prompt injection or answer faithfulness. No coverage percentage was measured.
+
+Production acceptance remains for PostgreSQL locking, Docker image builds, representative PDF ingestion and live model providers. OCR, vision and legacy Office conversion are unavailable, as documented in [parser modules](parsing.md). RAG direct dependencies are pinned; platform-specific ML transitive locking remains deployment work. See [deployment](deployment.md) for operational limits and migration steps.

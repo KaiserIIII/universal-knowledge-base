@@ -31,6 +31,33 @@ def graph(kb, profile, *, dual=False):
 
 
 class WorkflowTests(ApiTestCase):
+    async def test_file_module_uses_ready_sql_documents_without_index_search(self):
+        pid = await self.profile()
+        hit = await self.evidence(content='Original uploaded file policy')
+        value = graph(self.kb, pid)
+        value['nodes'][1].update(type='files', config={'kb_ids': [self.kb], 'doc_ids': [hit['doc_id']], 'top_k': 3, 'context_chars': 1000})
+        wid = await self.save(value)
+        self.retriever.results = []
+        self.llm.content = 'Policy [1]'
+        result = await self.run_flow(wid)
+        self.assertEqual(result['status'], 'completed', result)
+        self.assertEqual(result['sources'][0]['content'], 'Original uploaded file policy')
+        self.assertEqual(self.retriever.search_calls, [])
+        await self.client.delete(f"/api/v1/kb/{self.kb}/documents/{hit['doc_id']}")
+        self.assertEqual((await self.client.post(f'/api/v1/workflows/{wid}/run', json={'query': 'Policy?', 'use_published': False})).status_code, 404)
+
+    async def test_file_module_rejects_foreign_document_even_with_local_kb(self):
+        pid = await self.profile()
+        other = await self.new_client()
+        identity = await self.register_with(other, 'foreign-files@example.test')
+        foreign_kb = (await other.post('/api/v1/knowledge-bases', json={'name': 'Private'})).json()['id']
+        upload = await other.post(f'/api/v1/kb/{foreign_kb}/documents', files={'files': ('private.txt', b'private')})
+        value = graph(self.kb, pid)
+        value['nodes'][1].update(type='files', config={'kb_ids': [self.kb], 'doc_ids': [upload.json()['documents'][0]['id']]})
+        response = await self.client.post('/api/v1/workflows/validate', json={'graph': value})
+        self.assertEqual(response.status_code, 404, response.text)
+        self.assertEqual(self.llm.calls, [])
+
     async def asyncSetUp(self):
         await super().asyncSetUp()
         await self.register('flows@example.test')
@@ -73,12 +100,6 @@ class WorkflowTests(ApiTestCase):
             await asyncio.sleep(.01)
         self.fail('Workflow did not finish')
 
-    async def usage(self):
-        from app.saas.billing_models import MonthlyUsage
-        async with self.app.state.session_factory() as db:
-            row = await db.scalar(select(MonthlyUsage).where(MonthlyUsage.workspace_id == self.workspace_id))
-            return (row.completed_answers, row.reserved_answers) if row else (0, 0)
-
     async def test_profiles_enforce_hosts_secrets_urls_and_roles(self):
         pid = await self.profile()
         for data in [{'base_url': 'https://evil.test/v1'}, {'api_key_env': 'PATH'}, {'base_url': 'https://user:pass@provider.example.test/v1'},
@@ -86,7 +107,7 @@ class WorkflowTests(ApiTestCase):
                      {'temperature': 5}, {'provider': 'arbitrary-code'}, {'api_key': 'plaintext'}]:
             response = await self.client.patch('/api/v1/model-profiles/' + pid, json=data)
             self.assertEqual(response.status_code, 422, response.text)
-        viewer, _ = await self.join('viewer@example.test', paid_fixture=True)
+        viewer, _ = await self.join('viewer@example.test')
         self.assertEqual((await viewer.post('/api/v1/model-profiles/' + pid + '/test')).status_code, 403)
 
     async def test_graph_validation_rejects_cycle_ports_dangling_and_budget(self):
@@ -134,7 +155,6 @@ class WorkflowTests(ApiTestCase):
         result = await self.run_flow(wid)
         self.assertEqual(result['status'], 'insufficient_evidence', result)
         self.assertEqual(self.llm.calls, [])
-        self.assertEqual(await self.usage(), (0, 0))
 
     async def test_actual_retrieval_outage_fails_workflow_without_knowledge_gap(self):
         from tests.test_final_integration import failing_rag
@@ -146,7 +166,6 @@ class WorkflowTests(ApiTestCase):
         self.assertEqual(result['error'], 'retrieval_unavailable')
         self.assertNotIn('PRIVATE_RETRIEVAL_CANARY', json.dumps(result))
         self.assertEqual(self.llm.calls, [])
-        self.assertEqual(await self.usage(), (0, 0))
         self.assertEqual((await self.client.get('/api/v1/insights')).json()['gaps'], [])
 
     async def test_supported_metadata_filter_uses_authoritative_sql_fields(self):
@@ -197,7 +216,6 @@ class WorkflowTests(ApiTestCase):
             self.assertTrue(progressed, 'Cancellation was blocked by read-only retrieval')
             self.assertEqual(canceled.status_code, 200, canceled.text)
             self.assertEqual((await self.poll(wid, rid))['status'], 'canceled')
-            self.assertEqual(await self.usage(), (0, 0))
 
     async def test_parallel_models_dispatch_parameters_and_safe_traces(self):
         pid, pid2 = await self.profile(), await self.profile(model='model-b')
@@ -221,7 +239,6 @@ class WorkflowTests(ApiTestCase):
         self.assertTrue(result['invalid_citations'])
         self.assertEqual(len(result['sources']), 1)
         self.assertNotIn('Policy document body', json.dumps(result['trace']))
-        self.assertEqual(await self.usage(), (1, 0))
 
     async def test_partial_failure_is_degraded_and_total_failure_is_error(self):
         pid = await self.profile(); await self.evidence()
@@ -237,9 +254,8 @@ class WorkflowTests(ApiTestCase):
         self.llm.complete = fail
         result = await self.run_flow(wid)
         self.assertEqual(result['status'], 'error', result)
-        self.assertEqual(await self.usage(), (1, 0))
 
-    async def test_real_cancel_and_whole_run_timeout_release_quota(self):
+    async def test_real_cancel_and_whole_run_timeout(self):
         pid = await self.profile(); await self.evidence()
         wid = await self.save(graph(self.kb, pid, dual=True))
         started = asyncio.Event(); canceled = []
@@ -255,11 +271,9 @@ class WorkflowTests(ApiTestCase):
         result = await self.poll(wid, rid)
         self.assertEqual(result['status'], 'canceled', result)
         self.assertTrue(canceled)
-        self.assertEqual(await self.usage(), (0, 0))
         self.settings.workflow_timeout_seconds = .1
         result = await self.run_flow(wid)
         self.assertEqual(result['status'], 'timed_out', result)
-        self.assertEqual(await self.usage(), (0, 0))
 
     async def test_real_http_profile_parameters_and_safe_test_error(self):
         pid = await self.profile(api_key_env='WORKFLOW_TEST_KEY')
@@ -312,7 +326,6 @@ class WorkflowTests(ApiTestCase):
         self.assertEqual(self.retriever.search_calls, [])
         self.settings.model_allowed_hosts = []
         self.assertEqual((await self.client.post(f'/api/v1/workflows/{wid}/run', json={'query': 'q', 'use_published': False})).status_code, 422)
-        self.assertEqual(await self.usage(), (0, 0))
 
     async def test_dual_kb_transforms_prompt_rerank_and_synthesis_are_source_bound(self):
         pid = await self.profile()
@@ -363,7 +376,6 @@ class WorkflowTests(ApiTestCase):
     async def test_recovery_fences_expired_worker_and_preserves_active_worker(self):
         from app.saas.workflow_models import WorkflowRun
         from app.saas.workflow_engine import WorkflowService, Value, begin_write
-        from app.saas.quotas import reserve_answer
         from app.saas.models import utcnow
         pid = await self.profile(); wid = await self.save(graph(self.kb, pid))
         active_id, expired_id = str(uuid4()), str(uuid4())
@@ -371,9 +383,8 @@ class WorkflowTests(ApiTestCase):
         async with self.app.state.session_factory() as db:
             await begin_write(db)
             for id, seconds in [(active_id, 60), (expired_id, -60)]:
-                reservation = await reserve_answer(db, self.workspace_id)
                 db.add(WorkflowRun(id=id, workflow_id=wid, workspace_id=self.workspace_id, created_by=self.user['id'],
-                    reservation_id=reservation.id, worker_id=owner, lease_until=utcnow() + timedelta(seconds=seconds), graph={}, status='running'))
+                    worker_id=owner, lease_until=utcnow() + timedelta(seconds=seconds), graph={}, status='running'))
             await db.commit()
         service = WorkflowService(self.app.state.session_factory, self.settings, self.retriever, self.app.state.model_dispatcher)
         await service.start()
@@ -386,7 +397,6 @@ class WorkflowTests(ApiTestCase):
         service.worker_id = owner
         await service.finalize(expired_id, 'completed', Value(answer='late', sources=[{}]), [], 1)
         self.assertEqual((await self.client.get(f'/api/v1/workflows/{wid}/runs/{expired_id}')).json()['status'], 'error')
-        self.assertEqual(await self.usage(), (0, 1))
 
     async def test_versions_runs_and_viewer_drafts_are_tenant_scoped(self):
         pid = await self.profile(); g = graph(self.kb, pid)
@@ -405,7 +415,7 @@ class WorkflowTests(ApiTestCase):
         wid2 = await self.save(g)
         self.assertEqual((await self.client.post(f'/api/v1/workflows/{wid2}/rollback', json={'version_id': v1})).status_code, 404)
         self.assertEqual((await self.client.get(f'/api/v1/workflows/{wid2}/runs/{result["id"]}')).status_code, 404)
-        viewer, _ = await self.join('read@example.test', paid_fixture=True)
+        viewer, _ = await self.join('read@example.test')
         self.assertEqual((await viewer.get(f'/api/v1/workflows/{wid}')).json()['graph']['nodes'][3]['config']['temperature'], .3)
         self.assertEqual((await viewer.post(f'/api/v1/workflows/{wid}/run', json={'query': 'q', 'use_published': False})).status_code, 403)
         self.assertEqual((await viewer.get(f'/api/v1/workflows/{wid2}')).status_code, 404)
@@ -497,7 +507,7 @@ class WorkflowTests(ApiTestCase):
         self.assertNotIn('CANARY', result.text)
         self.assertNotIn('evil.test', result.text)
 
-    async def test_immediate_cancel_and_remote_worker_cancel_release_reservations(self):
+    async def test_immediate_cancel_and_remote_worker_cancel_persist_terminal_state(self):
         pid = await self.profile(); await self.evidence()
         wid = await self.save(graph(self.kb, pid))
         async def slow(**kwargs): await asyncio.sleep(30)
@@ -514,9 +524,8 @@ class WorkflowTests(ApiTestCase):
             row.cancel_requested = True; row.status = 'canceling'
             await db.commit()
         self.assertEqual((await self.poll(wid, rid))['status'], 'canceled')
-        self.assertEqual(await self.usage(), (0, 0))
 
-    async def test_valid_citation_only_output_is_not_a_usable_billed_answer(self):
+    async def test_valid_citation_only_output_is_not_a_usable_answer(self):
         pid = await self.profile(); hit = await self.evidence()
         wid = await self.save(graph(self.kb, pid))
         for answer in ['[1]', '[source:' + hit['chunk_id'] + ']']:
@@ -524,21 +533,18 @@ class WorkflowTests(ApiTestCase):
             result = await self.run_flow(wid)
             self.assertEqual(result['status'], 'error', result)
             self.assertEqual(result['error'], 'upstream_protocol_error')
-        self.assertEqual(await self.usage(), (0, 0))
 
     async def test_periodic_recovery_survives_transient_database_failure(self):
         from sqlalchemy.exc import OperationalError
         from app.saas.workflow_models import WorkflowRun
         from app.saas.workflow_engine import WorkflowService, begin_write
-        from app.saas.quotas import reserve_answer
         from app.saas.models import utcnow
         pid = await self.profile(); wid = await self.save(graph(self.kb, pid))
         rid = str(uuid4())
         async with self.app.state.session_factory() as db:
             await begin_write(db)
-            reservation = await reserve_answer(db, self.workspace_id)
             db.add(WorkflowRun(id=rid, workflow_id=wid, workspace_id=self.workspace_id, created_by=self.user['id'],
-                reservation_id=reservation.id, worker_id=str(uuid4()), lease_until=utcnow() - timedelta(seconds=60), graph={}, status='running'))
+                worker_id=str(uuid4()), lease_until=utcnow() - timedelta(seconds=60), graph={}, status='running'))
             await db.commit()
         service = WorkflowService(self.app.state.session_factory, self.settings, self.retriever, self.app.state.model_dispatcher)
         self.settings.workflow_lease_seconds = .02
@@ -556,7 +562,6 @@ class WorkflowTests(ApiTestCase):
                 pass
             self.assertTrue(done.is_set(), 'Janitor stopped after its first transient DB failure')
             self.assertEqual((await self.client.get(f'/api/v1/workflows/{wid}/runs/{rid}')).json()['status'], 'error')
-            self.assertEqual(await self.usage(), (0, 0))
         finally:
             loop.cancel(); await asyncio.gather(loop, return_exceptions=True)
 
@@ -571,7 +576,6 @@ class WorkflowTests(ApiTestCase):
         result = await self.run_flow(await self.save(g))
         self.assertEqual(result['status'], 'insufficient_evidence', result)
         self.assertEqual(self.llm.calls, [])
-        self.assertEqual(await self.usage(), (0, 0))
 
     async def test_blocked_branch_minimum_does_not_discard_surviving_synthesis(self):
         pid = await self.profile()
@@ -587,4 +591,3 @@ class WorkflowTests(ApiTestCase):
         self.assertEqual(result['status'], 'degraded', result)
         self.assertEqual(result['answer'], 'Supported [1]')
         self.assertEqual(len(self.llm.calls), 2)
-        self.assertEqual(await self.usage(), (1, 0))

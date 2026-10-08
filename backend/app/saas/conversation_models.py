@@ -35,7 +35,9 @@ class Message(Base):
     latency_ms: Mapped[float | None] = mapped_column(Float)
     error: Mapped[str | None] = mapped_column(String(64))
     invalid_citations: Mapped[bool] = mapped_column(Boolean, default=False)
-    reservation_id: Mapped[str | None] = mapped_column(GUID(), ForeignKey('saas_answer_reservations.id'), unique=True)
+    # Kept as an inert nullable column so existing databases remain readable;
+    # the open-source runtime no longer creates or consumes answer accounting.
+    reservation_id: Mapped[str | None] = mapped_column(GUID(), unique=True)
     created_at: Mapped[object] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[object | None] = mapped_column(DateTime(timezone=True))
 

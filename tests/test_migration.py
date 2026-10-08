@@ -70,7 +70,7 @@ class MigrationTests(ApiTestCase):
         finally:
             await engine.dispose()
         settings=AppSettings(_env_file=None,_env_prefix='KNOWLEDGE_TEST_LEGACY_ISOLATED_',database_url=database_url,upload_temp_dir=str(folder/'legacy-uploads'),cookie_secure=False,ingestion_worker_enabled=False)
-        app=create_app(settings,self.retriever,self.llm,self.payment)
+        app=create_app(settings,self.retriever,self.llm)
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://testserver') as client:
                 identity=await self.register_with(client,'legacy-operator@example.test')

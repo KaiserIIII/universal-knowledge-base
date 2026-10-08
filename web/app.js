@@ -2,7 +2,7 @@ import {t,html,staticHTML,localizePage,bindLanguageControl,localeURL,getLocale} 
 import {api,Client} from './api.js';
 import {$,esc,toast,formJSON,showModal} from './dom.js';
 
-const nav=[['overview','◈','概览'],['knowledge','▤','知识库'],['chat','◇','对话工作台'],['workflows','⌘','可视化编排'],['models','◉','模型连接'],['evaluation','◎','检索实验室'],['team','♧','团队与权限'],['billing','▣','订阅与用量'],['settings','⚙','工作空间设置']];
+const nav=[['overview','◈','概览'],['knowledge','▤','知识库'],['chat','◇','对话工作台'],['workflows','⌘','可视化编排'],['models','◉','模型连接'],['evaluation','◎','检索实验室'],['team','♧','团队与权限'],['settings','⚙','工作空间设置']];
 export const state={user:null,organizations:[],workspace:null,csrf:null,view:null,cleanup:null};
 let routeRevision=0;
 let identityPending=false;
@@ -71,7 +71,7 @@ export async function route() {
   $('#view').innerHTML=staticHTML('<div class="loading">正在加载…</div>');
   try {
     if(!state.workspace){$('#view').innerHTML=staticHTML('<div class="empty"><strong>你还没有工作空间</strong>请创建组织，或使用管理员分享的邀请链接。</div>');return;}
-    const module=await import(['overview','team','billing','settings'].includes(state.view)?'./views.js':`./${state.view}.js`);
+    const module=await import(['overview','team','settings'].includes(state.view)?'./views.js':`./${state.view}.js`);
     if(revision!==routeRevision)return;
     const outlet=document.createElement('div');
     const scopedClient=new Client(api.fetcher);scopedClient.setContext(state.workspace.id,state.csrf);

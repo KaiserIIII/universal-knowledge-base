@@ -31,8 +31,8 @@ test('scope and CSRF headers are derived from current in-memory context', async 
 
 test('errors preserve status and readable server detail; no-content is supported', async () => {
   const {Client}=await import('../../web/api.js');
-  const denied=new Client(async()=>new Response('{"detail":"Quota exceeded"}',{status:429}));
-  await assert.rejects(denied.request('/api/v1/kb'),error=>error.status===429&&error.message==='Quota exceeded');
+  const denied=new Client(async()=>new Response('{"detail":"Too many requests"}',{status:429}));
+  await assert.rejects(denied.request('/api/v1/kb'),error=>error.status===429&&error.message==='Too many requests');
   const empty=new Client(async()=>new Response(null,{status:204}));
   assert.equal(await empty.request('/api/v1/kb',{method:'DELETE'}),null);
 });

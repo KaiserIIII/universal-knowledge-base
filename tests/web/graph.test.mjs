@@ -25,6 +25,13 @@ test('templates have valid acyclic paths and dual templates expose independent b
   assert.equal(template('multi-model').nodes.filter(node=>node.type==='model').length,2);
   assert.equal(template('multi-kb').nodes.filter(node=>node.type==='retrieval').length,2);
 });
+
+test('file evidence connects to grounding and model modules',()=>{
+  const graph=template();
+  graph.nodes[1]=makeNode('files','retrieve',310,180);
+  assert.deepEqual(validateGraph(graph),[]);
+  assert.deepEqual(graph.nodes[1].config.doc_ids,[]);
+});
 test('import validation rejects nonnumeric coordinates and malformed configuration',()=>{
   assert.ok(validateGraph({nodes:[null],edges:[]}).length);
   assert.ok(validateGraph({nodes:[],edges:[null]}).length);

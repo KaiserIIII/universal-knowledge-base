@@ -1,7 +1,7 @@
 import {t,html,staticHTML,localizePage,bindLanguageControl,localeURL,getLocale} from './i18n.js';
 import {$,esc,toast,showModal,download,when} from './dom.js';
 const stateLabels={completed:'回答完成',insufficient_evidence:'资料不足',error:'生成失败',failed:'生成失败',canceled:'已取消',running:'正在生成',pending:'等待生成',unconfirmed:'状态待确认'};
-export function chatErrorMessage(code){return ({upstream_timeout:t('模型响应超时，请稍后重试。'),upstream_disconnected:t('模型连接中断，部分回答已保存。'),upstream_protocol_error:t('模型返回格式不兼容，请检查连接配置。'),upstream_rejected:t('模型拒绝请求，请检查连接配置与额度。'),model_not_configured:t('尚未配置可用模型，请联系组织管理员。'),output_limit:t('模型输出超过限制，部分回答已保存。'),retrieval_timeout:t('检索超时，请稍后重试。'),retrieval_unavailable:t('检索服务暂不可用，请检查资料状态。'),request_canceled:t('已停止本次回答。')})[code]||t('模型调用失败，请检查连接配置后重试。');}
+export function chatErrorMessage(code){return ({upstream_timeout:t('模型响应超时，请稍后重试。'),upstream_disconnected:t('模型连接中断，部分回答已保存。'),upstream_protocol_error:t('模型返回格式不兼容，请检查连接配置。'),upstream_rejected:t('模型拒绝请求，请检查连接配置与提供者限制。'),model_not_configured:t('尚未配置可用模型，请联系组织管理员。'),output_limit:t('模型输出超过限制，部分回答已保存。'),retrieval_timeout:t('检索超时，请稍后重试。'),retrieval_unavailable:t('检索服务暂不可用，请检查资料状态。'),request_canceled:t('已停止本次回答。')})[code]||t('模型调用失败，请检查连接配置后重试。');}
 export function applyChatEvent(answer,chunk){
   if(chunk.error)answer.error=typeof chunk.error==='string'?chunk.error:chunk.error.code||'upstream_error';
   const delta=chunk.choices?.[0]?.delta?.content||chunk.delta||(chunk.type==='delta'?chunk.content:'');if(typeof delta==='string')answer.content+=delta;

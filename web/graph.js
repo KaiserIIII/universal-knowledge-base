@@ -2,6 +2,7 @@ import {t,html,staticHTML,localizePage,bindLanguageControl,localeURL,getLocale} 
 export const NODE_TYPES={
   input:{name:'问题输入',icon:'↳',output:'query',accepts:[],defaults:{}},
   retrieval:{name:'知识库检索',icon:'▤',output:'evidence',accepts:['query'],defaults:{kb_ids:[],top_k:6,hybrid_alpha:0.5,score_threshold:0,enable_reranker:false,context_chars:16000}},
+  files:{name:'文件资料',icon:'▧',output:'evidence',accepts:['query'],defaults:{kb_ids:[],doc_ids:[],top_k:12,context_chars:16000}},
   filter:{name:'元数据过滤',icon:'⊏',output:'evidence',accepts:['evidence'],defaults:{metadata:{}}},
   deduplicate:{name:'去重与截断',icon:'⋈',output:'evidence',accepts:['evidence'],defaults:{top_k:12,context_chars:20000}},
   rerank:{name:'相关性重排',icon:'⇅',output:'evidence',accepts:['evidence'],defaults:{top_k:6}},

@@ -2,7 +2,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models import Base, GUID
 from .models import utcnow
@@ -14,6 +14,7 @@ class KnowledgeConfig(Base):
     chunk_size: Mapped[int] = mapped_column(Integer, default=1000)
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=200)
     use_unstructured: Mapped[bool] = mapped_column(Boolean, default=False)
+    parser_config: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class IngestionJob(Base):

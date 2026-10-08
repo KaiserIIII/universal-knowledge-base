@@ -217,9 +217,6 @@ async def accept_invite(payload: AcceptInput, request: Request, db: AsyncSession
         raise HTTPException(404, "Invitation not found")
     if await db.scalar(select(Membership.id).where(Membership.workspace_id == row.workspace_id, Membership.user_id == user.id)):
         raise HTTPException(409, "User is already a member")
-    quota_check = request.app.state.member_quota_check
-    if quota_check is not None:
-        await quota_check(db, row.workspace_id)
     db.add(Membership(workspace_id=row.workspace_id, user_id=user.id, role=row.role))
     row.accepted_at = utcnow()
     db.add(AuditEvent(workspace_id=row.workspace_id, user_id=user.id, action="invitation.accepted", resource_id=row.id))

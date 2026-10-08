@@ -1,5 +1,5 @@
 """
-通用知识库 — Pydantic V2 数据校验与 API 契约定义
+知序知识库 — Pydantic V2 数据校验与 API 契约定义
 
 设计原则:
   1. 严格使用 Pydantic V2 的 model_config = ConfigDict(from_attributes=True)

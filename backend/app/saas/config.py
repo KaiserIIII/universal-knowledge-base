@@ -22,11 +22,6 @@ class AppSettings(Settings):
     auth_attempt_limit: int = Field(default=10, ge=1, le=1000)
     auth_attempt_window_seconds: int = Field(default=300, ge=1, le=86400)
     auth_attempt_max_buckets: int = Field(default=10000, ge=100, le=1000000)
-    stripe_secret_key: str | None = None
-    stripe_webhook_secret: str | None = None
-    stripe_team_price_id: str | None = None
-    stripe_business_price_id: str | None = None
-    stripe_webhook_tolerance_seconds: int = Field(default=300, ge=1, le=3600)
     chat_timeout_seconds: float = Field(default=60, ge=.05, le=300)
     chat_history_messages: int = Field(default=20, ge=0, le=100)
     chat_history_chars: int = Field(default=12000, ge=0, le=100000)

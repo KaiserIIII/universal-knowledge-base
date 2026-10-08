@@ -6,8 +6,7 @@ from app.main import create_runtime_app
 
 class RuntimeTests(ApiTestCase):
     async def test_public_ui_and_authenticated_resources_have_security_headers(self):
-        app = create_runtime_app(self.settings, retriever=self.retriever,
-                                 llm=self.llm, payment=self.payment)
+        app = create_runtime_app(self.settings, retriever=self.retriever, llm=self.llm)
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://testserver') as client:
                 home=await client.get('/')

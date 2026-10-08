@@ -71,7 +71,6 @@ class IdentityTests(ApiTestCase):
 
     async def test_invitation_acceptance_is_one_time_email_bound(self):
         await self.register("owner@example.test")
-        await self.seed_subscription("team")
         invite = await self.invite("invited@example.test", "editor")
         other = await self.new_client()
         await self.register_with(other, "other@example.test")
@@ -102,7 +101,7 @@ class IdentityTests(ApiTestCase):
 
     async def test_role_changes_member_removal_and_last_owner_guard(self):
         await self.register("roles-owner@example.test")
-        viewer, user = await self.join("viewer@example.test", paid_fixture=True)
+        viewer, user = await self.join("viewer@example.test")
         path = f"/api/v1/organizations/{self.workspace_id}/members/{user['user']['id']}"
         self.assertEqual((await viewer.patch(path, json={"role": "admin"})).status_code, 403)
         self.assertEqual((await self.client.patch(path, json={"role": "admin"})).status_code, 200)
@@ -166,7 +165,7 @@ class IdentityTests(ApiTestCase):
 
     async def test_member_removal_revokes_keys_even_after_rejoining(self):
         await self.register("remove-owner@example.test")
-        member, user = await self.join("remove-admin@example.test", "admin", paid_fixture=True)
+        member, user = await self.join("remove-admin@example.test", "admin")
         key = (await member.post("/api/v1/api-keys", json={"name": "old integration"})).json()
         api_client = await self.new_client()
         api_client.headers.update({"Authorization": f"Bearer {key['key']}", "X-Workspace-ID": self.workspace_id})
@@ -180,7 +179,7 @@ class IdentityTests(ApiTestCase):
     async def test_owner_concurrent_demotion_preserves_an_owner(self):
         from app.saas.models import Membership
         await self.register("owner-one@example.test")
-        other, user = await self.join("owner-two@example.test", "owner", paid_fixture=True)
+        other, user = await self.join("owner-two@example.test", "owner")
         path = f"/api/v1/organizations/{self.workspace_id}/members"
         replies = await asyncio.gather(self.client.patch(f"{path}/{self.user['id']}", json={"role": "viewer"}), other.patch(f"{path}/{user['user']['id']}", json={"role": "viewer"}))
         self.assertEqual(sorted(reply.status_code for reply in replies), [200, 409])

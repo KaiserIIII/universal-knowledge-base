@@ -9,28 +9,25 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.models import Base
 from . import models  # register additive identity tables in the shared metadata
-from . import billing_models
 from .auth import router as auth_router
-from .billing import router as billing_router
 from .config import AppSettings
 from .organizations import keys_router, router as organizations_router
 from .security import AuthThrottle, hash_password, new_token
-from .payments import StripePayment
-from .quotas import check_member_quota
 from .knowledge import router as knowledge_router
 from .ingestion import IngestionWorker
 from .retrieval import RAGRetriever
 from .conversations import router as conversations_router
-from .chat import ChatService, recover_failed_answers, router as chat_router
+from .chat import ChatService, router as chat_router
 from .insights import router as insights_router
 from .evaluation import router as evaluation_router
 from .llm import OpenAICompatibleLLM
 from .model_profiles import ModelDispatcher, router as model_profiles_router
 from .workflows import router as workflows_router
 from .workflow_engine import WorkflowService
+from .schema_updates import upgrade_schema
 
 
-def create_app(settings=None, retriever=None, llm=None, payment=None) -> FastAPI:
+def create_app(settings=None, retriever=None, llm=None) -> FastAPI:
     settings = settings if settings is not None else AppSettings()
 
     @asynccontextmanager
@@ -51,10 +48,10 @@ def create_app(settings=None, retriever=None, llm=None, payment=None) -> FastAPI
         app.state.session_factory = async_sessionmaker(engine, expire_on_commit=False, info={"settings": settings})
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
+        await upgrade_schema(engine)
         app.state.chat_service = ChatService(app.state.session_factory, settings, app.state.retriever, app.state.model_dispatcher)
         app.state.workflow_service = WorkflowService(app.state.session_factory, settings, app.state.retriever, app.state.model_dispatcher)
         await app.state.workflow_service.start()
-        await recover_failed_answers(app.state.session_factory)
         app.state.dummy_password_hash = await hash_password(new_token())
         app.state.ingestion_worker = IngestionWorker(app.state.session_factory, settings, app.state.retriever)
         app.state.ingestion_worker.start()
@@ -63,7 +60,7 @@ def create_app(settings=None, retriever=None, llm=None, payment=None) -> FastAPI
         finally:
             await app.state.workflow_service.stop()
             await app.state.ingestion_worker.stop()
-            for adapter in (app.state.retriever, app.state.llm, app.state.payment):
+            for adapter in (app.state.retriever, app.state.llm):
                 close = getattr(adapter, "close", None)
                 if close:
                     result = close()
@@ -71,15 +68,13 @@ def create_app(settings=None, retriever=None, llm=None, payment=None) -> FastAPI
                         await result
             await engine.dispose()
 
-    app = FastAPI(title="Enterprise Knowledge SaaS", version="3.0.0", lifespan=lifespan,
+    app = FastAPI(title="Zhixu · Enterprise Knowledge", version="3.1.0", lifespan=lifespan,
                   docs_url=None, redoc_url=None)
     app.state.settings = settings
     app.state.retriever = retriever if retriever is not None else RAGRetriever(settings)
     app.state.llm = llm if llm is not None else OpenAICompatibleLLM(settings)
     app.state.model_dispatcher = ModelDispatcher(settings, app.state.llm)
-    app.state.payment = payment if payment is not None else StripePayment(settings)
     app.state.auth_throttle = AuthThrottle()
-    app.state.member_quota_check = check_member_quota
 
     @app.middleware("http")
     async def origin_guard(request: Request, call_next):
@@ -96,7 +91,6 @@ def create_app(settings=None, retriever=None, llm=None, payment=None) -> FastAPI
     app.include_router(auth_router)
     app.include_router(organizations_router)
     app.include_router(keys_router)
-    app.include_router(billing_router)
     app.include_router(knowledge_router)
     app.include_router(conversations_router)
     app.include_router(chat_router)

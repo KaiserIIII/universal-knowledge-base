@@ -1,11 +1,11 @@
 import {t,html,staticHTML,localizePage,bindLanguageControl,localeURL,getLocale} from './i18n.js';
-import {$,esc,toast,showModal,when,download} from './dom.js';
+import {$,esc,toast,showModal,when} from './dom.js';
 
 const heading=(label,title,subtitle,actions='')=>`<div class="section-heading"><div><div class="eyebrow">${label}</div><h1>${title}</h1><p class="description">${subtitle}</p></div><div class="toolbar">${actions}</div></div>`;
 const empty=(title,detail)=>`<div class="empty"><strong>${title}</strong>${detail}</div>`;
 const roleName={owner:'所有者',admin:'管理员',editor:'知识编辑',viewer:'只读成员'};
 
-export async function render(host,ctx){return ({overview,team,billing,settings}[ctx.state.view])(host,ctx);}
+export async function render(host,ctx){return ({overview,team,settings}[ctx.state.view])(host,ctx);}
 
 async function overview(host,{api,state}) {
   const data=await api.request('/api/v1/insights');
@@ -32,18 +32,8 @@ async function team(host,ctx) {
   bindRemove('[data-revoke-key]',button=>`/api/v1/api-keys/${button.dataset.revokeKey}`,t('确定撤销此密钥？'));
 }
 
-async function billing(host,{api,state}) {
-  const [plans,result]=await Promise.all([api.request('/api/v1/billing/plans'),api.request('/api/v1/billing/subscription')]);
-  const entries=Array.isArray(plans)?plans:plans.plans||[];const admin=['owner','admin'].includes(state.workspace.role);
-  result.usage={...result.usage,monthly_answers:(result.usage?.completed_answers||0)+(result.usage?.reserved_answers||0)};
-  host.innerHTML=heading('SUBSCRIPTION & USAGE',t('订阅与用量'),t('查看当前权益和实际使用量，按团队需要调整订阅。'),admin?staticHTML('<button id="billingPortal" class="secondary">管理订阅 ↗</button>'):'')+html`<section class="card" style="margin-bottom:22px"><div class="card-header"><div><h2>当前套餐：${esc(result.plan||'free').toUpperCase()}</h2><p class="card-sub">订阅状态：${esc(result.status||'free')} · 权益由服务端订阅状态决定</p></div><span class="badge green">${esc(result.plan||'free').toUpperCase()}</span></div><div class="grid four">${Object.entries(result.limits||{}).map(([name,limit])=>`<div><small>${({members:t('团队成员'),knowledge_bases:t('知识库'),documents:t('文档'),monthly_answers:t('每月问答'),answers:t('每月问答')})[name]||esc(name)}</small><div style="margin-top:10px;font-size:20px">${esc(typeof result.usage?.[name]==='number'?result.usage[name]:'—')} <small>/ ${esc(limit)}</small></div></div>`).join('')}</div></section><div class="grid three">${entries.map(plan=>`<section class="card plan-card ${plan.id==='team'||plan.plan==='team'?'recommended':''}"><div class="row between"><h3>${esc(plan.name||plan.id||plan.plan)}</h3>${plan.id==='team'||plan.plan==='team'?'<span class="badge green">TEAM</span>':''}</div><div class="price">${plan.id==='free'||plan.plan==='free'?t('免费'):t('部署者配置价格')}</div><p class="card-sub">${esc(plan.description||t('按组织提供额度与协作能力'))}</p><ul>${Object.entries(plan.limits||{}).map(([name,count])=>`<li>${esc(count)} ${({members:t('位成员'),knowledge_bases:t('个知识库'),documents:t('份文档'),monthly_answers:t('次问答 / 月'),answers:t('次问答 / 月')})[name]||esc(name)}</li>`).join('')}</ul>${admin&&['team','business'].includes(plan.id||plan.plan)?html`<button class="${plan.id==='team'||plan.plan==='team'?'primary':'secondary'}" data-upgrade="${esc(plan.id||plan.plan)}">选择此套餐 →</button>`:staticHTML('<span class="badge">基础工作空间</span>')}</section>`).join('')}</div><p class="hint" style="margin-top:22px">付费连接需要部署者配置 Stripe。未配置时不会创建付款或假定订阅生效；页面跳转成功后仍以服务器收到的有效订阅事件为准。</p>`;
-  $('#billingPortal',host)?.addEventListener('click',async()=>{try{const data=await api.request('/api/v1/billing/portal',{method:'POST',json:{}});safePaymentRedirect(data.url);}catch(error){toast(error.message,'error');}});
-  host.querySelectorAll('[data-upgrade]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const data=await api.request('/api/v1/billing/checkout',{method:'POST',json:{plan:button.dataset.upgrade}});safePaymentRedirect(data.url);}catch(error){toast(error.message,'error');}finally{button.disabled=false;}});
-}
-function safePaymentRedirect(value){const url=new URL(value);if(url.protocol!=='https:'||!['checkout.stripe.com','billing.stripe.com'].includes(url.hostname))throw new Error(t('付款服务返回了不支持的地址'));location.assign(url.href);}
-
 async function settings(host,{api,state,refreshIdentity,route}) {
   const admin=['owner','admin'].includes(state.workspace.role);const workspace=await api.request(`/api/v1/organizations/${state.workspace.id}`);
-  host.innerHTML=heading('WORKSPACE SETTINGS',t('工作空间设置'),t('组织资料与部署配置分开管理。'))+html`<section class="card" style="max-width:760px"><h2>组织资料</h2><form id="workspaceForm" class="stack"><label>名称<input name="name" value="${esc(workspace.name)}" maxlength="128" required ${admin?'':'disabled'}></label><label>描述<textarea name="description" rows="3" maxlength="512" ${admin?'':'disabled'}>${esc(workspace.description||'')}</textarea></label>${admin?staticHTML('<div><button class="primary" type="submit">保存资料</button></div>'):''}</form></section><section class="card" style="margin-top:22px;max-width:760px"><h2>部署连接</h2><p class="muted">数据库、文件存储、向量索引、允许的模型主机和支付凭据由部署环境配置。组织模型参数可在“模型连接”中管理，知识库入库参数可在知识库详情中调整。</p><div class="row wrap"><a href="#models" class="secondary">模型连接</a><a href="#knowledge" class="quiet">知识库参数</a><a href="/docs" class="quiet" target="_blank" rel="noopener">API 文档 ↗</a></div></section>`;
+  host.innerHTML=heading('WORKSPACE SETTINGS',t('工作空间设置'),t('组织资料与部署配置分开管理。'))+html`<section class="card" style="max-width:760px"><h2>组织资料</h2><form id="workspaceForm" class="stack"><label>名称<input name="name" value="${esc(workspace.name)}" maxlength="128" required ${admin?'':'disabled'}></label><label>描述<textarea name="description" rows="3" maxlength="512" ${admin?'':'disabled'}>${esc(workspace.description||'')}</textarea></label>${admin?staticHTML('<div><button class="primary" type="submit">保存资料</button></div>'):''}</form></section><section class="card" style="margin-top:22px;max-width:760px"><h2>部署连接</h2><p class="muted">数据库、文件存储、向量索引、允许的模型主机和数据发送范围由部署环境配置。组织模型参数可在“模型连接”中管理，知识库入库参数可在知识库详情中调整。</p><div class="row wrap"><a href="#models" class="secondary">模型连接</a><a href="#knowledge" class="quiet">知识库参数</a><a href="/docs" class="quiet" target="_blank" rel="noopener">API 文档 ↗</a></div></section>`;
   $('#workspaceForm',host).onsubmit=async event=>{event.preventDefault();try{const data=Object.fromEntries(new FormData(event.target));await api.request(`/api/v1/organizations/${state.workspace.id}`,{method:'PATCH',json:data});await refreshIdentity();await route();toast(t('工作空间资料已保存'),'success');}catch(error){toast(error.message,'error');}};
 }

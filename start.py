@@ -1,4 +1,4 @@
-"""Run the installed SaaS environment in the foreground; Ctrl+C stops it."""
+"""Run the installed Zhixu environment in the foreground; Ctrl+C stops it."""
 import os
 from pathlib import Path
 import subprocess
@@ -15,7 +15,7 @@ def main():
     if probe.returncode:
         print('Install the locked environment first; see README quick start.', file=sys.stderr)
         return 1
-    print('Enterprise Knowledge: http://localhost:8000 (Ctrl+C to stop)', flush=True)
+    print('Zhixu · Enterprise Knowledge: http://localhost:8000 (Ctrl+C to stop)', flush=True)
     return subprocess.call([str(python), 'run.py'], cwd=ROOT / 'backend')
 
 if __name__ == '__main__':

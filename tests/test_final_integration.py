@@ -105,7 +105,7 @@ class FinalIntegrationTests(ApiTestCase):
             self.assertEqual(response.json()['results'], [])
 
     async def test_search_and_evaluation_release_lock_and_recheck_membership(self):
-        viewer, user = await self.join('final-viewer@example.test', paid_fixture=True)
+        viewer, user = await self.join('final-viewer@example.test')
         for path in ['/api/v1/agent/search', '/api/v1/evaluation/retrieval']:
             with self.subTest(path=path):
                 entered, release = asyncio.Event(), asyncio.Event()

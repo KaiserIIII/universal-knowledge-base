@@ -75,7 +75,7 @@ class KnowledgeTests(ApiTestCase):
 
     async def test_viewer_cannot_write(self):
         kb = await self.kb()
-        viewer, _ = await self.join('viewer@example.test', paid_fixture=True)
+        viewer, _ = await self.join('viewer@example.test')
         for method, path, kwargs in [
             ('post', '/api/v1/knowledge-bases', {'json': {'name': 'No'}}),
             ('patch', f'/api/v1/knowledge-bases/{kb}', {'json': {'name': 'No'}}),
@@ -108,8 +108,7 @@ class KnowledgeTests(ApiTestCase):
         await self.kb()
         await self.kb()
         response = await self.client.post('/api/v1/knowledge-bases', json={'name': 'Excess'})
-        self.assertEqual(response.status_code, 409)
-        await self.seed_subscription()
+        self.assertEqual(response.status_code, 201)
         await self.kb()
         self.assertEqual((await self.client.get(f'/api/v1/kb/{kb}/documents')).json()['total'], 1)
 
@@ -197,14 +196,14 @@ class KnowledgeTests(ApiTestCase):
         self.assertIsInstance(app.state.retriever, RAGRetriever)
         self.assertIsNone(app.state.retriever._engine)
 
-    async def test_concurrent_kb_inserts_share_last_free_slot(self):
+    async def test_concurrent_kb_inserts_are_unlimited(self):
         await self.kb()
         await self.kb()
         responses = await asyncio.gather(*[
             self.client.post('/api/v1/knowledge-bases', json={'name': name})
             for name in ('First contender', 'Second contender')])
-        self.assertEqual(sorted(response.status_code for response in responses), [201, 409])
-        self.assertEqual(len((await self.client.get('/api/v1/knowledge-bases')).json()), 3)
+        self.assertEqual(sorted(response.status_code for response in responses), [201, 201])
+        self.assertEqual(len((await self.client.get('/api/v1/knowledge-bases')).json()), 4)
 
     async def test_viewer_document_deletion_retry_and_foreign_job_are_denied(self):
         kb = await self.kb()
@@ -214,7 +213,7 @@ class KnowledgeTests(ApiTestCase):
         self.retriever.chunks, self.retriever.upsert = [{'content': 'policy'}], fail
         await self.app.state.ingestion_worker.drain()
         job = (await self.client.get('/api/v1/ingestion-jobs')).json()['jobs'][0]
-        viewer, _ = await self.join('job-viewer@example.test', paid_fixture=True)
+        viewer, _ = await self.join('job-viewer@example.test')
         self.assertEqual((await viewer.delete(f'/api/v1/kb/{kb}/documents/{doc}')).status_code, 403)
         self.assertEqual((await viewer.post(f"/api/v1/ingestion-jobs/{job['id']}/retry")).status_code, 403)
         foreign = await self.new_client()
@@ -222,7 +221,7 @@ class KnowledgeTests(ApiTestCase):
         self.assertEqual((await foreign.post(f"/api/v1/ingestion-jobs/{job['id']}/retry")).status_code, 404)
         self.assertEqual((await foreign.get('/api/v1/ingestion-jobs')).json()['jobs'], [])
 
-    async def test_document_quota_and_mixed_upload_are_atomic(self):
+    async def test_unlimited_documents_and_invalid_mixed_upload_are_atomic(self):
         from app.models import Document
         kb = await self.kb()
         async with self.app.state.session_factory() as db:
@@ -232,15 +231,15 @@ class KnowledgeTests(ApiTestCase):
         response = await self.client.post(f'/api/v1/kb/{kb}/documents', files=[
             ('files', ('one.txt', b'one', 'text/plain')),
             ('files', ('two.txt', b'two', 'text/plain'))])
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual((await self.client.get(f'/api/v1/kb/{kb}/documents')).json()['total'], 49)
-        self.assertEqual(list(Path(self.settings.upload_temp_dir).glob('*')), [])
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual((await self.client.get(f'/api/v1/kb/{kb}/documents')).json()['total'], 51)
+        retained = set(Path(self.settings.upload_temp_dir).rglob('*'))
         response = await self.client.post(f'/api/v1/kb/{kb}/documents', files=[
-            ('files', ('one.txt', b'one', 'text/plain')),
+            ('files', ('three.txt', b'three', 'text/plain')),
             ('files', ('bad.exe', b'two', 'text/plain'))])
         self.assertEqual(response.status_code, 422)
-        self.assertEqual(list(Path(self.settings.upload_temp_dir).glob('*')), [])
-        await self.seed_subscription()
+        self.assertEqual(set(Path(self.settings.upload_temp_dir).rglob('*')), retained)
+        self.assertEqual((await self.client.get(f'/api/v1/kb/{kb}/documents')).json()['total'], 51)
         self.assertEqual((await self.upload(kb)).status_code, 202)
 
     async def test_deletion_during_index_write_is_fenced_then_cleaned(self):
@@ -482,7 +481,8 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
                 ('policy.csv', 'name,value\n政策,42'), ('policy.json', '{"policy":"中文政策"}')]:
                 path = Path(folder) / filename
                 path.write_text(content, encoding='utf-8')
-                self.assertEqual(processor._parse_file(str(path), filename), content)
+                expected = content.replace(',', ' | ') if filename.endswith('.csv') else content
+                self.assertEqual(processor._parse_file(str(path), filename), expected)
             path = Path(folder) / 'policy.html'
             path.write_text('<html><script>hidden script</script><style>hidden style</style><p>中文 &amp; policy</p></html>', encoding='utf-8')
             with patch.dict(sys.modules, {'bs4': None}):

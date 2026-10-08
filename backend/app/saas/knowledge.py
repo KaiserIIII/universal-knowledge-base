@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 from app.models import Document, DocumentChunk, DocStatus, KnowledgeBase, KBType
+from app.parsing import NATIVE_FORMATS, ParserOptions, parser_catalog, validate_selection
 from .dependencies import AccessContext, get_access, get_db, get_scoped_kb, require_role, valid_id
 from .ingestion_models import IngestionJob, KnowledgeConfig
-from .quotas import check_resource_quota
 from .retrieval import scope_results, validate_kb_ids
 
 router = APIRouter(prefix='/api/v1')
 WRITERS = ('owner', 'admin', 'editor')
-SUPPORTED = {'.txt', '.md', '.csv', '.json', '.pdf', '.docx', '.xlsx', '.pptx', '.html', '.htm'}
+SUPPORTED = NATIVE_FORMATS
 
 
 class KBCreate(BaseModel):
@@ -26,6 +26,7 @@ class KBCreate(BaseModel):
     chunk_size: int = Field(default=1000, ge=50, le=10000)
     chunk_overlap: int = Field(default=200, ge=0, le=9999)
     use_unstructured: bool = False
+    parser_config: ParserOptions = Field(default_factory=ParserOptions)
 
     @model_validator(mode='after')
     def overlap(self):
@@ -45,6 +46,7 @@ class KBUpdate(BaseModel):
     chunk_size: int | None = Field(default=None, ge=50, le=10000)
     chunk_overlap: int | None = Field(default=None, ge=0, le=9999)
     use_unstructured: bool | None = None
+    parser_config: ParserOptions | None = None
 
 
 class SearchInput(BaseModel):
@@ -66,6 +68,7 @@ async def kb_json(db, kb, settings):
         'chunk_size': config.chunk_size if config else settings.chunk_default_size,
         'chunk_overlap': config.chunk_overlap if config else settings.chunk_default_overlap,
         'use_unstructured': config.use_unstructured if config else settings.use_unstructured,
+        'parser_config': ParserOptions.model_validate(config.parser_config or {} if config else {}).model_dump(),
         'embedding_model': settings.embedding_model_name}
 
 
@@ -83,6 +86,11 @@ def job_json(job):
 def live_documents(kb_id):
     return select(Document).outerjoin(IngestionJob, IngestionJob.doc_id == Document.id).where(
         Document.kb_id == kb_id, IngestionJob.id.is_(None) | (IngestionJob.action == 'ingest'))
+
+
+@router.get('/parsers')
+async def list_parsers(access: AccessContext = Depends(get_access)):
+    return {'parsers': parser_catalog(), 'ocr_available': False, 'vision_available': False}
 
 
 async def get_scoped_document(db, access, kb_id, doc_id):
@@ -103,13 +111,12 @@ async def list_kbs(request: Request, access: AccessContext = Depends(get_access)
 @router.post('/knowledge-bases', status_code=201)
 async def create_kb(body: KBCreate, request: Request, access: AccessContext = Depends(get_access), db=Depends(get_db)):
     require_role(access, *WRITERS)
-    await check_resource_quota(db, access.workspace_id, 'knowledge_bases')
     kb = KnowledgeBase(workspace_id=access.workspace_id, name=body.name.strip(), description=body.description,
         kb_type=body.kb_type, category_tags=body.category_tags)
     db.add(kb)
     await db.flush()
     db.add(KnowledgeConfig(kb_id=kb.id, chunk_size=body.chunk_size, chunk_overlap=body.chunk_overlap,
-        use_unstructured=body.use_unstructured))
+        use_unstructured=body.use_unstructured, parser_config=body.parser_config.model_dump()))
     await db.commit()
     return await kb_json(db, kb, request.app.state.settings)
 
@@ -140,6 +147,7 @@ async def update_kb(kb_id: str, body: KBUpdate, request: Request, access: Access
         db.add(config)
     for key in ('chunk_size', 'chunk_overlap', 'use_unstructured'):
         setattr(config, key, getattr(validated, key))
+    config.parser_config = validated.parser_config.model_dump()
     await db.commit()
     return await kb_json(db, kb, request.app.state.settings)
 
@@ -184,6 +192,8 @@ async def upload_documents(kb_id: str, request: Request, files: list[UploadFile]
     kb = await get_scoped_kb(db, access, kb_id)
     require_role(access, *WRITERS)
     settings = request.app.state.settings
+    config = await db.get(KnowledgeConfig, kb.id)
+    parser_options = ParserOptions.model_validate(config.parser_config or {} if config else {})
     if not files or len(files) > settings.max_files_per_batch:
         raise HTTPException(400, 'Invalid upload batch size')
     prepared, hashes, skipped = [], set(), 0
@@ -193,6 +203,10 @@ async def upload_documents(kb_id: str, request: Request, files: list[UploadFile]
         suffix = Path(filename).suffix.lower()
         if suffix not in SUPPORTED or len(filename) > 512:
             raise HTTPException(422, 'Unsupported file type')
+        try:
+            validate_selection(filename, parser_options)
+        except ValueError:
+            raise HTTPException(422, 'Selected parser does not support this file type') from None
         data = await file.read(settings.max_upload_size_mb * 1024 * 1024 + 1)
         if len(data) > settings.max_upload_size_mb * 1024 * 1024:
             raise HTTPException(413, 'Upload exceeds size limit')
@@ -205,8 +219,6 @@ async def upload_documents(kb_id: str, request: Request, files: list[UploadFile]
             continue
         hashes.add(digest)
         prepared.append((filename, suffix, data, digest))
-    if prepared:
-        await check_resource_quota(db, access.workspace_id, 'documents', increment=len(prepared))
     written, documents = [], []
     try:
         folder = Path(settings.upload_temp_dir)
@@ -244,7 +256,8 @@ async def document_chunks(kb_id: str, doc_id: str, access: AccessContext = Depen
     rows = (await db.scalars(select(DocumentChunk).where(DocumentChunk.doc_id == doc.id).order_by(DocumentChunk.chunk_index))).all()
     return [{'id': row.id, 'doc_id': row.doc_id, 'chunk_index': row.chunk_index,
         'content': row.content, 'token_count': row.token_count,
-        'metadata': {'kb_id': kb_id, 'chunk_index': row.chunk_index}} for row in rows]
+        'metadata': {'kb_id': kb_id, 'chunk_index': row.chunk_index,
+            **{key: row.metadata_[key] for key in ('source_sha256', 'parser_mode') if key in (row.metadata_ or {})}}} for row in rows]
 
 
 @router.delete('/kb/{kb_id}/documents/{doc_id}')
